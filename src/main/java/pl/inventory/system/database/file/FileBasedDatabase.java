@@ -48,8 +48,8 @@ public class FileBasedDatabase<T extends Numberable> implements Database<T> {
   public Long save(T item) {
     log.debug("Saving {} (with id:{}) to the database", item.getClass().getSimpleName(), item.getId());
     File itemFile = new File(filePath.toString());
-    Long currentId = idProvider.getCurrentIdAndIncrement();
     FileManager.createFile(itemFile);
+    Long currentId = idProvider.getCurrentIdAndIncrement();
     item.setId(currentId);
     fileService.appendLineToFile(filePath, serializer.objectToJson(item));
     log.debug("{} (with id: {}) successfully saved in database", item.getClass().getSimpleName(), item.getId());
@@ -94,6 +94,7 @@ public class FileBasedDatabase<T extends Numberable> implements Database<T> {
 
   @Override
   public Optional<T> updateById(Long id, T updateItem) {
+    // TODO: 19.09.2024 Add makeBackupFile() and deleteBackupFile() for improve security of operations
     Optional<T> optionalItem = getById(id);
     if (optionalItem.isPresent()) {
       updateItem.setId(id);
@@ -109,6 +110,7 @@ public class FileBasedDatabase<T extends Numberable> implements Database<T> {
 
   @Override
   public <P> Optional<T> updateByProperty(P prop, T updateItem) {
+    // TODO: 19.09.2024 Add makeBackupFile() and deleteBackupFile() for improve security of operations
     Optional<T> optionalItem = getByUniqueProperty(prop);
     List<T> updatedList;
     if (optionalItem.isPresent()) {
