@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+    branches: [step*]
+  pull_request:
+    branches: [step*]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build with gradle
+        run: ./gradlew build
