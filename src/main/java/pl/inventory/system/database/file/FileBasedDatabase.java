@@ -1,24 +1,25 @@
 package pl.inventory.system.database.file;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import pl.inventory.system.database.Database;
-import pl.inventory.system.model.Numberable;
+import pl.inventory.system.model.Numerable;
 import pl.inventory.system.utils.FileManager;
 import pl.inventory.system.utils.FileService;
 import pl.inventory.system.utils.IdProvider;
 import pl.inventory.system.utils.JsonSerializer;
-import pl.inventory.system.utils.exceptions.InvalidFileException;
 
 @Slf4j
-public class FileBasedDatabase<T extends Numberable> implements Database<T> {
+public class FileBasedDatabase<T extends Numerable> implements Database<T> {
 
+  private static final Lock LOCK = new ReentrantLock();
   private final Path filePath;
   private final IdProvider idProvider;
   private final FileService fileService;
@@ -40,142 +41,184 @@ public class FileBasedDatabase<T extends Numberable> implements Database<T> {
   }
 
   @Override
-  public Long getItemId() {
-    return idProvider.getCurrentIdAndIncrement();
-  }
-
-  @Override
   public Long save(T item) {
-    log.debug("Saving {} (with id:{}) to the database", item.getClass().getSimpleName(), item.getId());
-    File itemFile = new File(filePath.toString());
-    FileManager.createFile(itemFile);
-    Long currentId = idProvider.getCurrentIdAndIncrement();
-    item.setId(currentId);
-    fileService.appendLineToFile(filePath, serializer.objectToJson(item));
-    log.debug("{} (with id: {}) successfully saved in database", item.getClass().getSimpleName(), item.getId());
-    return currentId;
+    LOCK.lock();
+    try {
+      File itemFile = new File(filePath.toString());
+      FileManager.createFile(itemFile);
+      Long currentId = idProvider.getCurrentIdAndIncrement();
+      item.setId(currentId);
+      fileService.appendLineToFile(filePath, serializer.objectToJson(item));
+      log.debug("\"{} {}\" successfully stored in database", cls.getSimpleName(), currentId);
+      return currentId;
+    } finally {
+      LOCK.unlock();
+    }
   }
 
   @Override
   public List<T> getAll() {
-    File itemFile = new File(filePath.toString());
-    log.debug("Downloading all {} from the database", cls.getSimpleName());
-    if (itemFile.exists()) {
-      return fileService.readAllFile(filePath).stream()
-          .map(line -> serializer.jsonToObject(line, cls))
-          .toList();
+    LOCK.lock();
+    try {
+      File itemFile = new File(filePath.toString());
+      if (itemFile.exists()) {
+        log.debug("Downloading {} objects from the database successfully completed", cls.getSimpleName());
+        return fileService.readAllFile(filePath).stream()
+            .map(line -> serializer.jsonToObject(line, cls))
+            .toList();
+      }
+      log.warn("Download from database failed. The file with the specified name \"{}\" does not exist",
+          filePath.getFileName());
+      return List.of();
+    } finally {
+      LOCK.unlock();
     }
-    log.debug("Downloading all {} successfully completed", cls.getSimpleName());
-    return List.of();
   }
 
   @Override
   public <P> Optional<T> getByUniqueProperty(P prop) {
-    File itemFile = new File(filePath.toString());
-    log.debug("Downloading {} (with: {}) from the database", cls.getSimpleName(), prop.toString());
-    if (itemFile.exists()) {
-      return getAll().stream()
-          .filter(item -> item.getNumber().equalsIgnoreCase(prop.toString())).findAny();
+    LOCK.lock();
+    try {
+      Optional<T> searchedObject = getAll().stream()
+          .filter(item -> item.getNumber().equalsIgnoreCase(String.valueOf(prop)))
+          .findFirst();
+      if (searchedObject.isPresent()) {
+        log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), prop);
+        return searchedObject;
+      } else {
+        log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), prop);
+        return Optional.empty();
+      }
+    } finally {
+      LOCK.unlock();
     }
-    log.debug("Downloading {} (with: {}) from the database completed", cls.getSimpleName(), prop);
-    return Optional.empty();
   }
 
   @Override
   public Optional<T> getById(Long id) {
-    File itemFile = new File(filePath.toString());
-    if (itemFile.exists()) {
-      return getAll().stream()
+    LOCK.lock();
+    try {
+      Optional<T> searchedObject = getAll().stream()
           .filter(item -> item.getId().compareTo(id) == 0)
-          .findAny();
+          .findFirst();
+      if (searchedObject.isPresent()) {
+        log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), id);
+        return searchedObject;
+      } else {
+        log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), id);
+        return Optional.empty();
+      }
+    } finally {
+      LOCK.unlock();
     }
-    return Optional.empty();
   }
 
   @Override
   public Optional<T> updateById(Long id, T updateItem) {
-    // TODO: 19.09.2024 Add makeBackupFile() and deleteBackupFile() for improve security of operations
-    Optional<T> optionalItem = getById(id);
-    if (optionalItem.isPresent()) {
-      updateItem.setId(id);
-      List<T> updatedList = getAll().stream()
-          .filter(item -> !Objects.equals(item, optionalItem.get()))
-          .collect(Collectors.toList());
-      updatedList.add(Integer.parseInt(String.valueOf(id)), updateItem);
-      fileService.writeLinesToFile(filePath, updatedList.stream().map(serializer::objectToJson).toList());
-      return optionalItem;
+    LOCK.lock();
+    try {
+      Optional<T> optionalItem = getById(id);
+      if (optionalItem.isPresent()) {
+        T oldItem = optionalItem.get();
+        List<T> itemsList = getAll();
+        final int optionalIndex = itemsList.indexOf(oldItem);
+        FileManager.makeBackupFile(filePath);
+        updateItem.setId(id);
+        List<T> updatedList = itemsList.stream()
+            .filter(item -> !Objects.equals(item, oldItem))
+            .collect(Collectors.toList());
+        updatedList.add(optionalIndex, updateItem);
+        fileService.writeLinesToFile(filePath, updatedList.stream().map(serializer::objectToJson).toList());
+        if (getAll().contains(updateItem)) {
+          FileManager.deleteBackupFile(filePath);
+        }
+        log.debug("Update of the \"{} {}\" successfully completed.", cls.getSimpleName(), id);
+        return Optional.of(updateItem);
+      }
+      log.debug("Update failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), id);
+      return Optional.empty();
+    } finally {
+      LOCK.unlock();
     }
-    return Optional.empty();
   }
 
   @Override
-  public <P> Optional<T> updateByProperty(P prop, T updateItem) {
-    // TODO: 19.09.2024 Add makeBackupFile() and deleteBackupFile() for improve security of operations
-    Optional<T> optionalItem = getByUniqueProperty(prop);
-    List<T> updatedList;
-    if (optionalItem.isPresent()) {
-      updateItem.setId(optionalItem.get().getId());
-      updatedList = getAll().stream()
-          .filter(item -> !item.equals(optionalItem.get()))
-          .collect(Collectors.toList());
-      updatedList.add(Integer.parseInt(String.valueOf(updateItem.getId())), updateItem);
-      fileService.writeLinesToFile(filePath, updatedList.stream().map(serializer::objectToJson).toList());
-      return optionalItem;
+  public <P> Optional<T> updateByUniqueProperty(P prop, T updateItem) {
+    LOCK.lock();
+    try {
+      Optional<T> optionalItem = getByUniqueProperty(prop);
+      if (optionalItem.isPresent()) {
+        T oldItem = optionalItem.get();
+        List<T> itemsList = getAll();
+        final int optionalIndex = itemsList.indexOf(oldItem);
+        FileManager.makeBackupFile(filePath);
+        updateItem.setId(oldItem.getId());
+        List<T> updatedList = itemsList.stream()
+            .filter(item -> !Objects.equals(item, oldItem))
+            .collect(Collectors.toList());
+        updatedList.add(optionalIndex, updateItem);
+        fileService.writeLinesToFile(filePath, updatedList.stream().map(serializer::objectToJson).toList());
+        if (getAll().contains(updateItem)) {
+          FileManager.deleteBackupFile(filePath);
+        }
+        log.debug("Update of the \"{} {}\" successfully completed.", cls.getSimpleName(), prop);
+        return Optional.of(updateItem);
+      }
+      log.debug("Update failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), prop);
+      return Optional.empty();
+    } finally {
+      LOCK.unlock();
     }
-    return Optional.empty();
   }
 
   @Override
   public Optional<T> deleteById(Long id) {
-    File itemFile = new File(filePath.toString());
-    List<String> itemsToSave;
-    if (itemFile.exists()) {
-      FileManager.makeBackupFile(filePath);
-      itemsToSave = getAll().stream()
-          .filter(item -> !Objects.equals(item.getId(), id))
-          .map(serializer::objectToJson)
-          .toList();
-      fileService.writeLinesToFile(filePath, itemsToSave);
-      if (!fileService.readAllFile(filePath).isEmpty()) {
-        FileManager.deleteBackupFile(filePath);
-      } else {
-        try {
-          FileManager.validateFile(itemFile);
-        } catch (InvalidFileException | FileNotFoundException e) {
-          throw new RuntimeException(e);
+    LOCK.lock();
+    try {
+      Optional<T> optionalToRemove = getById(id);
+      if (optionalToRemove.isPresent()) {
+        FileManager.makeBackupFile(filePath);
+        List<String> itemsToSave = getAll().stream()
+            .filter(item -> !Objects.equals(item.getId(), id))
+            .map(serializer::objectToJson)
+            .toList();
+        fileService.writeLinesToFile(filePath, itemsToSave);
+        if (!(getAll().isEmpty() && getAll().contains(optionalToRemove.get()))) {
+          FileManager.deleteBackupFile(filePath);
         }
+        log.debug("Delete of the \"{} {}\" successfully completed.", cls.getSimpleName(), id);
+        return optionalToRemove;
       }
-      return getAll().stream()
-          .filter(item -> item.getId().compareTo(id) == 0).findAny();
+      log.debug("Delete failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), id);
+      return Optional.empty();
+    } finally {
+      LOCK.unlock();
     }
-    return Optional.empty();
   }
 
   @Override
-  public <P> Optional<T> deleteByProperty(P prop) {
-    File itemFile = new File(filePath.toString());
-    List<String> itemsToSave;
-
-    if (itemFile.exists()) {
-      FileManager.makeBackupFile(filePath);
-      itemsToSave = getAll().stream()
-          .filter(item -> !item.getNumber().equalsIgnoreCase(prop.toString()))
-          .map(serializer::objectToJson)
-          .toList();
-      fileService.writeLinesToFile(filePath, itemsToSave);
-      if (!fileService.readAllFile(filePath).isEmpty()) {
-        FileManager.deleteBackupFile(filePath);
-      } else {
-        try {
-          FileManager.validateFile(itemFile);
-        } catch (InvalidFileException | FileNotFoundException e) {
-          throw new RuntimeException(e);
+  public <P> Optional<T> deleteByUniqueProperty(P prop) {
+    LOCK.lock();
+    try {
+      Optional<T> optionalToRemove = getByUniqueProperty(prop);
+      if (optionalToRemove.isPresent()) {
+        FileManager.makeBackupFile(filePath);
+        List<String> itemsToSave = getAll().stream()
+            .filter(item -> !item.getNumber().equalsIgnoreCase(prop.toString()))
+            .map(serializer::objectToJson)
+            .toList();
+        fileService.writeLinesToFile(filePath, itemsToSave);
+        if (!(getAll().isEmpty() && getAll().contains(optionalToRemove.get()))) {
+          FileManager.deleteBackupFile(filePath);
         }
+        log.debug("Delete of the \"{} {}\" successfully completed.", cls.getSimpleName(), prop);
+        return optionalToRemove;
       }
-      return getAll().stream()
-          .filter(deleted -> deleted.getNumber().equalsIgnoreCase(prop.toString()))
-          .findAny();
+      log.debug("Delete failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), prop);
+      return Optional.empty();
+    } finally {
+      LOCK.unlock();
     }
-    return Optional.empty();
   }
+
 }

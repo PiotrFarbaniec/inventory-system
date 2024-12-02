@@ -1,6 +1,6 @@
 package pl.inventory.system.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
@@ -10,10 +10,9 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@JsonInclude(JsonInclude.Include.NON_NULL)
 @NoArgsConstructor
 @AllArgsConstructor
-public class Room implements Numberable {
+public class Room implements Numerable {
 
   private Long id;
 
@@ -21,6 +20,7 @@ public class Room implements Numberable {
 
   private List<Item> itemsList;
 
+  @JsonIgnore
   @Override
   public String getNumber() {
     return roomNumber;

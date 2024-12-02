@@ -26,7 +26,11 @@ public class FileService {
    */
   public void appendLineToFile(Path path, String line) {
     try {
-      Files.write(path, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+      Files.write(
+          path,
+          (line + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
+          StandardOpenOption.APPEND
+      );
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -39,7 +43,11 @@ public class FileService {
    */
   public void writeLinesToFile(Path path, List<String> lines) {
     try {
-      Files.write(path, (lines.get(0) + System.lineSeparator()).getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
+      Files.write(
+          path,
+          (lines.get(0) + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
+          StandardOpenOption.TRUNCATE_EXISTING
+      );
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -47,7 +55,11 @@ public class FileService {
         .filter(line -> !line.equals(lines.get(0)))
         .forEach(line -> {
           try {
-            Files.write(path, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+            Files.write(
+                path,
+                (line + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.APPEND
+            );
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
@@ -62,7 +74,10 @@ public class FileService {
    */
   public void writeToFile(Path path, String content) {
     try {
-      Files.write(path, (content + System.lineSeparator()).getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
+      Files.write(
+          path,
+          (content + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
+          StandardOpenOption.TRUNCATE_EXISTING);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

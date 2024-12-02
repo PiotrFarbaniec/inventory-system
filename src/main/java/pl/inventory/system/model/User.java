@@ -1,6 +1,5 @@
 package pl.inventory.system.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Objects;
 import lombok.Builder;
 import lombok.Data;
@@ -9,7 +8,6 @@ import lombok.Data;
 @Builder
 public class User {
 
-  @JsonIgnore
   private Long id;
 
   private String name;

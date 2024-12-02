@@ -1,7 +1,6 @@
 package pl.inventory.system.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -14,10 +13,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class Item implements Numberable {
+public class Item implements Numerable {
 
-  @JsonIgnore
   private Long id;
 
   private String inventoryNumber;
@@ -38,6 +35,7 @@ public class Item implements Numberable {
 
   private User user;
 
+  @JsonIgnore
   @Override
   public String getNumber() {
     return inventoryNumber;
@@ -56,7 +54,6 @@ public class Item implements Numberable {
         && Objects.equals(this.description, item.description)
         && Objects.equals(this.incomingDate, item.incomingDate)
         && Objects.equals(this.outgoingDate, item.outgoingDate)
-        && Objects.equals(this.modificationDate, item.modificationDate)
         && Objects.equals(this.itemQuantity, item.itemQuantity)
         && Objects.equals(this.itemPrice, item.itemPrice)
         && Objects.equals(this.documentNumber, item.documentNumber)
@@ -70,7 +67,6 @@ public class Item implements Numberable {
         this.description,
         this.incomingDate,
         this.outgoingDate,
-        this.modificationDate,
         this.itemQuantity,
         this.itemPrice,
         this.documentNumber,

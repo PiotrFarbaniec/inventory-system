@@ -1,5 +1,6 @@
 package pl.inventory.system.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -12,90 +13,81 @@ import pl.inventory.system.model.Room;
 import pl.inventory.system.utils.IdProvider;
 
 @Service
+@SuppressWarnings("unused")
 public class ItemService {
-  private final Database<Room> roomDatabase;
-  private final Database<Item> itemDatabase;
+  private final Database<Room> database;
   private final IdProvider itemIdProvider;
-  private final IdProvider roomIdProvider;
 
   @Autowired
   public ItemService(
-      Database<Room> roomDatabase,
-      Database<Item> itemDatabase,
-      @Qualifier("itemIdProvider") IdProvider itemIdProvider,
-      @Qualifier("roomIdProvider") IdProvider roomIdProvider) {
-    this.roomDatabase = roomDatabase;
-    this.itemDatabase = itemDatabase;
+      Database<Room> database,
+      @Qualifier("itemIdProvider") IdProvider itemIdProvider) {
+    this.database = database;
     this.itemIdProvider = itemIdProvider;
-    this.roomIdProvider = roomIdProvider;
   }
 
   public Optional<Room> saveToRoomId(Long roomId, Item item) {
-    Optional<Room> optionalRoom = roomDatabase.getById(roomId);
+    Optional<Room> optionalRoom = database.getById(roomId);
     if (optionalRoom.isPresent()) {
       Room room = optionalRoom.get();
       List<Item> itemList = room.getItemsList();
-
-      if (itemList.stream().noneMatch(i -> i.hashCode() == item.hashCode())) {
-        item.setId(itemIdProvider.getCurrentIdAndIncrement());
-        itemList.add(item);
-        room.setItemsList(itemList);
+      Optional<Item> replacedItem = itemList.stream()
+          .filter(i -> i.equals(item))
+          .findFirst();
+      if (replacedItem.isPresent()) {
+        item.setId(replacedItem.get().getId());
+        item.setModificationDate(LocalDate.now());
+        itemList.set(itemList.indexOf(replacedItem.get()), item);
       } else {
-        Optional<Item> replacedItem = itemList.stream()
-            .filter(i -> i.hashCode() == item.hashCode())
-            .findFirst();
-        if (replacedItem.isPresent()) {
-          item.setId(replacedItem.get().getId());
-          itemList.set(itemList.indexOf(replacedItem.get()), item);
-          room.setItemsList(itemList);
-        }
+        item.setId(itemIdProvider.getCurrentIdAndIncrement());
+        item.setModificationDate(LocalDate.now());
+        itemList.add(item);
       }
-      return roomDatabase.updateById(roomId, room);
+      room.setItemsList(itemList);
+      return database.updateById(roomId, room);
     }
     return Optional.empty();
   }
 
   public Optional<Room> saveToRoomNumber(String number, Item item) {
-    Optional<Room> optionalRoom = roomDatabase.getByUniqueProperty(number);
+    Optional<Room> optionalRoom = database.getByUniqueProperty(number);
     if (optionalRoom.isPresent()) {
       Room room = optionalRoom.get();
       List<Item> itemList = room.getItemsList();
-
-      if (itemList.stream().noneMatch(i -> i.hashCode() == item.hashCode())) {
-        item.setId(itemIdProvider.getCurrentIdAndIncrement());
-        itemList.add(item);
-        room.setItemsList(itemList);
+      Optional<Item> replacedItem = itemList.stream()
+          .filter(i -> i.equals(item))
+          .findFirst();
+      if (replacedItem.isPresent()) {
+        item.setId(replacedItem.get().getId());
+        item.setModificationDate(LocalDate.now());
+        itemList.set(itemList.indexOf(replacedItem.get()), item);
       } else {
-        Optional<Item> replacedItem = itemList.stream()
-            .filter(i -> i.hashCode() == item.hashCode())
-            .findFirst();
-        if (replacedItem.isPresent()) {
-          item.setId(replacedItem.get().getId());
-          itemList.set(itemList.indexOf(replacedItem.get()), item);
-          room.setItemsList(itemList);
-        }
+        item.setId(itemIdProvider.getCurrentIdAndIncrement());
+        item.setModificationDate(LocalDate.now());
+        itemList.add(item);
       }
-      return roomDatabase.updateByProperty(number, room);
+      room.setItemsList(itemList);
+      return database.updateByUniqueProperty(number, room);
     }
     return Optional.empty();
   }
 
   public List<Item> getAll() {
-    return roomDatabase.getAll().stream()
+    return database.getAll().stream()
         .flatMap(room -> room.getItemsList().stream())
         .toList();
   }
 
   public List<Item> getAllByRoomNumber(String roomNumber) {
-    Optional<Room> room = roomDatabase.getByUniqueProperty(roomNumber).stream().findFirst();
+    Optional<Room> room = database.getByUniqueProperty(roomNumber).stream().findFirst();
     if (room.isPresent()) {
       return room.get().getItemsList();
     }
     return List.of();
   }
 
-  public List<Item> getAllByRoomId(Long id) {
-    Optional<Room> room = roomDatabase.getById(id).stream().findFirst();
+  public List<Item> getAllByRoomId(Long roomId) {
+    Optional<Room> room = database.getById(roomId).stream().findFirst();
     if (room.isPresent()) {
       return room.get().getItemsList();
     }
@@ -103,58 +95,108 @@ public class ItemService {
   }
 
   public Optional<Item> getById(Long id) {
-    return roomDatabase.getAll().stream()
+    return database.getAll().stream()
         .flatMap(room -> room.getItemsList().stream())
         .filter(item -> Objects.equals(item.getId(), id))
         .findFirst();
   }
 
   public Optional<Item> getByNumber(String number) {
-    return roomDatabase.getAll().stream()
+    return database.getAll().stream()
         .flatMap(room -> room.getItemsList().stream())
-        .filter(item -> Objects.equals(item.getInventoryNumber(), number))
+        .filter(item -> item.getInventoryNumber().equalsIgnoreCase(number))
         .findFirst();
   }
 
   public Optional<Item> deleteById(Long id) {
-    Optional<Room> optionalRoom = roomDatabase.getAll().stream()
+    Optional<Room> optionalRoom = database.getAll().stream()
         .filter(room -> room.getItemsList().stream()
             .anyMatch(item -> item.getId().equals(id)))
         .findFirst();
     if (optionalRoom.isPresent()) {
       Room searchedRoom = optionalRoom.get();
       Optional<Item> itemToRemove = getById(id);
-      if (itemToRemove.isPresent()) {
-        searchedRoom.setItemsList(
-            searchedRoom.getItemsList().stream()
-                .filter(item -> !Objects.equals(item.getId(), id))
-                .toList()
-        );
-        roomDatabase.updateById(searchedRoom.getId(), searchedRoom);
-        return itemToRemove;
-      }
+      searchedRoom.setItemsList(
+          searchedRoom.getItemsList().stream()
+              .filter(item -> !Objects.equals(item.getId(), id))
+              .toList()
+      );
+      database.updateById(searchedRoom.getId(), searchedRoom);
+      return itemToRemove;
     }
     return Optional.empty();
   }
 
   public Optional<Item> deleteByNumber(String number) {
-    Optional<Room> optionalRoom = roomDatabase.getAll().stream()
+    Optional<Room> optionalRoom = database.getAll().stream()
         .filter(room -> room.getItemsList().stream()
-            .anyMatch(item -> item.getInventoryNumber().equals(number)))
+            .anyMatch(item -> item.getInventoryNumber().equalsIgnoreCase(number)))
         .findFirst();
     if (optionalRoom.isPresent()) {
       Room searchedRoom = optionalRoom.get();
       Optional<Item> itemToRemove = getByNumber(number);
-      if (itemToRemove.isPresent()) {
-        searchedRoom.setItemsList(
-            searchedRoom.getItemsList().stream()
-                .filter(item -> !Objects.equals(item.getInventoryNumber(), number))
-                .toList()
-        );
-        roomDatabase.updateByProperty(number, searchedRoom);
-        return itemToRemove;
+      searchedRoom.setItemsList(
+          searchedRoom.getItemsList().stream()
+              .filter(item -> !Objects.equals(item.getInventoryNumber(), number))
+              .toList()
+      );
+      database.updateByUniqueProperty(searchedRoom.getRoomNumber(), searchedRoom);
+      return itemToRemove;
+    }
+    return Optional.empty();
+  }
+
+  public Optional<Item> updateById(Long id, Item updateItem) {
+    Optional<Item> optionalItem = getById(id);
+    if (optionalItem.isPresent()) {
+      final Item oldItem = optionalItem.get();
+      updateItem.setId(id);
+      updateItem.setModificationDate(LocalDate.now());
+      Long roomId = getRoomId(oldItem);
+      if (roomId > 0) {
+        Optional<Room> optionalRoom = database.getById(roomId);
+        if (optionalRoom.isPresent()) {
+          Room room = optionalRoom.get();
+          int itemIndex = room.getItemsList().indexOf(oldItem);
+          List<Item> itemList = room.getItemsList();
+          itemList.set(itemIndex, updateItem);
+          room.setItemsList(itemList);
+          database.updateById(roomId, room);
+          return getById(id);
+        }
       }
     }
     return Optional.empty();
+  }
+
+  public Optional<Item> updateByNumber(String number, Item updateItem) {
+    Optional<Item> optionalItem = getByNumber(number);
+    if (optionalItem.isPresent()) {
+      final Item oldItem = optionalItem.get();
+      updateItem.setId(oldItem.getId());
+      updateItem.setModificationDate(LocalDate.now());
+      Long roomId = getRoomId(oldItem);
+      if (roomId > 0) {
+        Optional<Room> optionalRoom = database.getById(roomId);
+        if (optionalRoom.isPresent()) {
+          Room room = optionalRoom.get();
+          int itemIndex = room.getItemsList().indexOf(oldItem);
+          List<Item> itemList = room.getItemsList();
+          itemList.set(itemIndex, updateItem);
+          room.setItemsList(itemList);
+          database.updateById(roomId, room);
+          return getByNumber(number);
+        }
+      }
+    }
+    return Optional.empty();
+  }
+
+  private Long getRoomId(Item oldItem) {
+    Optional<Long> searchedRoomId = database.getAll().stream()
+        .filter(room -> (room.getItemsList()).contains(oldItem))
+        .map(Room::getId)
+        .findFirst();
+    return searchedRoomId.isPresent() ? searchedRoomId.get() : 0;
   }
 }
