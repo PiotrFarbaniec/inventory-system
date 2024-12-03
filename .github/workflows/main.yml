@@ -21,5 +21,7 @@ jobs:
           java-version: 17
       - name: Permission for gradlew
         run: chmod +x ./gradlew
+      - name: Run checkstyle
+        run: ./gradlew checkstyleMain
       - name: Build with Gradle
         run: ./gradlew build

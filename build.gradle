@@ -91,6 +91,8 @@ tasks.named('test') {
 }
 
 checkstyle {
+    toolVersion = '8.42'
+    configFile = file('config/checkstyle/checkstyle.xml')
     showViolations = true
     ignoreFailures = false
     maxWarnings = 0
