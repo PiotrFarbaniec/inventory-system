@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [step*]
+  pull_request:
+    branches: [step*]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Permission for gradlew
+        run: chmod +x ./gradlew
+      - name: Run checkstyle
+        run: ./gradlew checkstyleMain
+      - name: Build with Gradle
+        run: ./gradlew build
