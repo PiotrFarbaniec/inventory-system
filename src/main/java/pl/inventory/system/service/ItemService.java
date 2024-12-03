@@ -15,6 +15,7 @@ import pl.inventory.system.utils.IdProvider;
 @Service
 @SuppressWarnings("unused")
 public class ItemService {
+
   private final Database<Room> database;
   private final IdProvider itemIdProvider;
 

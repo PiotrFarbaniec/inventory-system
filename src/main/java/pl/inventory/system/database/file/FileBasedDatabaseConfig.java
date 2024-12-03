@@ -18,6 +18,7 @@ import pl.inventory.system.utils.JsonSerializer;
 @SuppressWarnings("unused")
 @ConditionalOnProperty(name = "inventory_system.database.name", havingValue = "file")
 public class FileBasedDatabaseConfig {
+
   private final String filesDirectory;
   private final String roomFileName;
   private final String roomIdFileName;
