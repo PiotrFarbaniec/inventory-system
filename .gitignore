@@ -26,9 +26,14 @@ replay_pid*
 # Ignore Gradle project-specific cache directory
 .gradle
 
+# Do not ignore Gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
 # Ignore Gradle build output directory
 build/
 
 # Ignore IntelliJ IDEA files
+*.iml
 .idea/
 /.idea/
