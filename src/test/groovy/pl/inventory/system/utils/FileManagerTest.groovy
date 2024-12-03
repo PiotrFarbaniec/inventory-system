@@ -156,79 +156,47 @@ class FileManagerTest extends Specification {
         then:
         thrown(InvalidFileException.class)
 
+        // new
         when:
         def otherFile = new File("otherFile.txt")
         FileManager.createFile(otherFile)
-        def isWriteOnly = otherFile.setReadOnly()
-        FileManager.deleteFile(otherFile)
-
-        then:
-        isWriteOnly
-        !otherFile.canWrite()
-        thrown(RuntimeException.class)
-
-        when:
+        otherFile.setWritable(false)
         FileManager.validateFile(otherFile)
-        FileManager.deleteFile(otherFile)
 
         then:
         thrown(InvalidFileException.class)
+
+        when:
+        File noNameFile = new File(".txt")
+        FileManager.createFile(noNameFile)
+
+        then:
+        thrown(RuntimeException.class)
+
+        when:
+        File wrongName = new File("wrongName")
+        FileManager.createFile(wrongName)
+
+        then:
+        def exception1 = thrown(RuntimeException.class)
+        assert exception1.cause.message == "File name or extension not specified"
+
+        when:
+        File wrongExtension = new File("wrongExtenson.doc")
+        FileManager.createFile(wrongExtension)
+
+        then:
+        def exception2 = thrown(RuntimeException.class)
+        assert exception2.cause.message == 'Not correct file extension (required "*.txt" or "*.json")'
+        assert exception2.cause instanceof InvalidFileException
+        // new
 
         cleanup:
         otherFile.setReadable(true)
         otherFile.setWritable(true)
         Files.deleteIfExists(otherFile.toPath())
+        Files.deleteIfExists(noNameFile.toPath())
+        Files.deleteIfExists(wrongName.toPath())
+        Files.deleteIfExists(wrongExtension.toPath())
     }
-
-    /*def "file validation should throw exceptions in various cases"() {
-        given:
-        def filePath = Path.of("someFile.txt")
-
-        when: 'when file does not exist'
-        File testFile = new File("someFile.txt")
-        FileManager.validateFile(testFile)
-
-        then:
-        thrown(FileNotFoundException.class)
-
-        when: 'when file is a directory'
-        def wrongFile = Files.createTempDirectory("someFileDir").toFile()
-        FileManager.validateFile(wrongFile)
-
-        then:
-        thrown(InvalidFileException.class)
-
-        when: 'when file has no write or read permission and cannot be modified'
-        def noPermissionFile = File.createTempFile("noPermissionFile", ".txt")
-        noPermissionFile.setReadable(false)
-        noPermissionFile.setWritable(false)
-        FileManager.validateFile(noPermissionFile)
-
-        then:
-        noExceptionThrown()
-        *//*thrown(InvalidFileException.class)*//*
-
-        when: 'when file name is empty'
-        def emptyNameFile = new File(".txt")
-        emptyNameFile.createNewFile()
-        FileManager.validateFile(emptyNameFile)
-
-        then: thrown(InvalidFileException.class)
-
-        when: 'when file has incorrect extension'
-        def incorrectExtensionFile = new File("file.wrong")
-        incorrectExtensionFile.createNewFile()
-        FileManager.validateFile(incorrectExtensionFile)
-
-        then: thrown(InvalidFileException.class)
-
-        when: 'when file is valid'
-        def validFile = new File("validFile.txt")
-        validFile.createNewFile()
-        validFile.setWritable(true)
-        validFile.setReadable(true)
-        FileManager.validateFile(validFile)
-
-        then: noExceptionThrown()
-    }*/
 }

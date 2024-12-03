@@ -111,7 +111,7 @@ public final class FileManager {
       throw new InvalidFileException("The file is not correct file type");
     }
     if (fileName.length < 2 || fileName[0].isBlank()) {
-      throw new InvalidFileException("File name can't be empty");
+      throw new InvalidFileException("File name or extension not specified");
     } else if (!fileName[1].equalsIgnoreCase("txt")
         && !fileName[1].equalsIgnoreCase("json")) {
       throw new InvalidFileException("Not correct file extension (required \"*.txt\" or \"*.json\")");
