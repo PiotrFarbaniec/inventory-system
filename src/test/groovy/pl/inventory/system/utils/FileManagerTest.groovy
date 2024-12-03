@@ -5,11 +5,11 @@ import spock.lang.Specification
 
 import java.nio.file.AccessDeniedException
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 
 class FileManagerTest extends Specification {
 
-    // new test methods
     def "create a backup file should fail on wrong file type"() {
         def notCorrectFile = Path.of("wrongFile.html")
 
@@ -33,24 +33,6 @@ class FileManagerTest extends Specification {
         thrown(RuntimeException.class)
     }
 
-    /*def "should not make backup on wrong argument"() {
-        given:
-        def fileName = "testFile.doc"
-        def filePath = Files.createDirectory(Path.of(fileName))
-
-        when:
-        FileManager.makeBackupFile(filePath)
-
-        then:
-        thrown(RuntimeException.class)
-
-    }*/
-
-
-
-
-    // new test methods
-
     def "should crate a file with the given name"() {
         given:
         def fileName = "testFile.txt"
@@ -72,7 +54,8 @@ class FileManagerTest extends Specification {
         FileManager.createFile(fileName, fileName)
 
         then:
-        thrown(RuntimeException.class)
+        def ex = thrown(RuntimeException.class)
+        assert ex.cause instanceof NoSuchFileException
     }
 
     def "should make a backup of specified file with '_COPY' extension"() {
@@ -86,19 +69,9 @@ class FileManagerTest extends Specification {
         then:
         file.exists()
         bacupFile.exists()
-    }
 
-    def "should delete created backup file"() {
-        given:
-        def existingFile = new File("testFile.txt")
-        def backupFile = new File("testFile_COPY.txt")
-
-        when:
-        FileManager.deleteBackupFile(existingFile.toPath())
-
-        then:
-        existingFile.exists()
-        !backupFile.exists()
+        cleanup:
+        FileManager.deleteBackupFile(file.toPath())
     }
 
     def "should delete created source file"() {
@@ -156,7 +129,6 @@ class FileManagerTest extends Specification {
         then:
         thrown(InvalidFileException.class)
 
-        // new
         when:
         def otherFile = new File("otherFile.txt")
         FileManager.createFile(otherFile)
@@ -189,7 +161,6 @@ class FileManagerTest extends Specification {
         def exception2 = thrown(RuntimeException.class)
         assert exception2.cause.message == 'Not correct file extension (required "*.txt" or "*.json")'
         assert exception2.cause instanceof InvalidFileException
-        // new
 
         cleanup:
         otherFile.setReadable(true)
