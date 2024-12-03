@@ -14,18 +14,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Download JDK 17 ORACLE
-        run: wget -qO- https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.tar.gz | tar xz -C /opt #actions/setup-java@v2
-
       - name: Set up JDK 17
-        run: echo "JAVA_HOME=/opt/jdk-17" >> $GITHUB_ENV
-
-      - name: Set permission for gradlew
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: 17
+      - name: Permission for gradlew
         run: chmod +x ./gradlew
-
       - name: Run checkstyle
         run: ./gradlew checkstyleMain
-
       - name: Build with Gradle
         run: ./gradlew build
