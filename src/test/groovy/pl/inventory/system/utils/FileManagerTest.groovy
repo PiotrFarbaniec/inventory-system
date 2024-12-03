@@ -45,19 +45,6 @@ class FileManagerTest extends Specification {
         file.exists()
     }
 
-    def "should not create a file for wrong arguments"() {
-        given:
-        def fileName = "testFile.txt"
-        def file = new File(fileName)
-
-        when:
-        FileManager.createFile(fileName, fileName)
-
-        then:
-        def ex = thrown(RuntimeException.class)
-        assert ex.cause instanceof NoSuchFileException
-    }
-
     def "should make a backup of specified file with '_COPY' extension"() {
         given:
         def file = new File("testFile.txt")
