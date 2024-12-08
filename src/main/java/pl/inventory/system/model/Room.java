@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Room implements Numerable {
+public class Room implements Storable {
 
   private Long id;
 

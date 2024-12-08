@@ -2,24 +2,43 @@ package pl.inventory.system.database;
 
 import java.util.List;
 import java.util.Optional;
-import pl.inventory.system.model.Numerable;
+import pl.inventory.system.model.InternallyStorable;
+import pl.inventory.system.model.Storable;
 
 @SuppressWarnings(value = "unused")
-public interface Database<T extends Numerable> {
+public interface Database<T1 extends Storable, T2 extends InternallyStorable> {
 
-  Long save(T item);
+  Long save(T1 item);
 
-  List<T> getAll();
+  List<T1> getAll();
 
-  <P> Optional<T> getByUniqueProperty(P prop);
+  <P> Optional<T1> getByProperty(P prop);
 
-  Optional<T> getById(Long id);
+  <P> Optional<T1> updateByProperty(P prop, T1 updateItem);
 
-  Optional<T> updateById(Long id, T updateItem);
+  <P> Optional<T1> deleteByProperty(P prop);
 
-  <P> Optional<T> updateByUniqueProperty(P prop, T updateItem);
+  default List<T2> getAllItems() {
+    return null;
+  }
 
-  Optional<T> deleteById(Long id);
+  default <P> Optional<T1> saveInObjectWithProperty(P objectProperty, T2 item) {
+    return Optional.empty();
+  }
 
-  <P> Optional<T> deleteByUniqueProperty(P prop);
+  default <P> List<T2> getAllFromObjectWithProperty(P objectProperty) {
+    return List.of();
+  }
+
+  default <P> Optional<T2> getItemByProperty(P itemProperty) {
+    return Optional.empty();
+  }
+
+  default <P> Optional<T2> deleteItemByProperty(P itemProperty) {
+    return Optional.empty();
+  }
+
+  default <P> Optional<T2> updateItemByProperty(P itemProperty, T2 updateItem) {
+    return Optional.empty();
+  }
 }

@@ -1,6 +1,5 @@
 package pl.inventory.system.database.file
 
-import pl.inventory.system.model.Room
 import pl.inventory.system.utils.FileService
 import pl.inventory.system.utils.JsonSerializer
 import spock.lang.Specification
@@ -68,16 +67,7 @@ class FileBasedDatabaseConfigTest extends Specification {
 
         then:
         dbInstance != null
-        //println dbInstance.getClass().getDeclaredFields().toList().contains(Room)
     }
-
-    /*def "deletion of files after tests"() {
-        cleanup:
-        Files.deleteIfExists(Path.of(roomFile))
-        Files.deleteIfExists(Path.of(roomIdFile))
-        Files.deleteIfExists(Path.of(itemIdFile))
-        Files.deleteIfExists(Path.of(filesDirectory))
-    }*/
 
     def "deletion of files after tests"() {
         cleanup:

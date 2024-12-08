@@ -2,6 +2,7 @@ package pl.inventory.system.service
 
 import pl.inventory.system.ObjectsProvider
 import pl.inventory.system.database.Database
+import pl.inventory.system.database.file.AbstractFileDatabase
 import pl.inventory.system.database.file.FileBasedDatabase
 import pl.inventory.system.model.Item
 import pl.inventory.system.model.Room
@@ -31,23 +32,24 @@ class ItemServiceIntegrationTest extends Specification {
     def itemIdProvider = new IdProvider(idItemPath, fileService)
     def roomIdProvider = new IdProvider(idRoomPath, fileService)
 
-    Database<Room> database = new FileBasedDatabase<>(filePath, roomIdProvider, fileService, serializer, Room.class)
-    final def service = new ItemService(database, itemIdProvider)
-    final def source = new ObjectsProvider()
+    Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
+    def service = new ItemService(database)
+    def source = new ObjectsProvider()
 
     def "should create entries for tests if database is empty"() {
         given:
-        def roomService = new RoomService(database, itemIdProvider)
+        def roomService = new RoomService(database)
         if (database.getAll().isEmpty()) {
             roomService.save(source.room1)
             roomService.save(source.room2)
             roomService.save(source.room3)
         }
+        database.getAllItems().forEach {println(it)}
     }
 
     def "should save Item by specified Room id with current modification date if already exists"() {
         given:
-        final def oldRoom = database.getById(1).get()
+        final def oldRoom = database.getByProperty(1L).get()
         def updateItem = source.table[0]
         updateItem.setModificationDate(LocalDate.of(2012, 02, 12))
 
@@ -63,7 +65,7 @@ class ItemServiceIntegrationTest extends Specification {
         given:
         def existingRoomId = 1L
         def nonexistentRoomId = 7L
-        final def oldRoom = database.getById(existingRoomId)
+        final def oldRoom = database.getByProperty(existingRoomId)
         def itemToSave = source.printer[1]
 
         when:
@@ -77,14 +79,14 @@ class ItemServiceIntegrationTest extends Specification {
 
         then:
         oldRoom.get().itemsList != secondResult.get().itemsList
-        database.getById(existingRoomId).get().itemsList.contains(itemToSave)
+        database.getByProperty(existingRoomId).get().itemsList.contains(itemToSave)
     }
 
     def "should overwrite with current modification date if Item exists in Room with specified number"() {
         given:
         def nonexistentRoomNumber = "603"
         def existingRoomNumber = "201"
-        final def oldRoom = database.getByUniqueProperty(existingRoomNumber)
+        final def oldRoom = database.getByProperty(existingRoomNumber)
         def itemToSave = source.table[0]
 
         when:
@@ -103,7 +105,7 @@ class ItemServiceIntegrationTest extends Specification {
     def "should save given Item to Room with specified number"() {
         given:
         def roomNumber = "201"
-        final def oldRoom = database.getByUniqueProperty(roomNumber)
+        final def oldRoom = database.getByProperty(roomNumber)
         def itemToSave = source.printer[0]
 
         when:
@@ -111,7 +113,7 @@ class ItemServiceIntegrationTest extends Specification {
 
         then:
         oldRoom.get() != result.get()
-        database.getByUniqueProperty(roomNumber).get().itemsList.contains(itemToSave)
+        database.getByProperty(roomNumber).get().itemsList.contains(itemToSave)
     }
 
     def "should return all items saved in the rooms"() {
@@ -182,13 +184,14 @@ class ItemServiceIntegrationTest extends Specification {
     def "should return an Item with the given id if exists"() {
         given:
         def existingId = 7L
-        def nonexistentId = 408
+        def nonexistentId = 408L
 
         when:
         def firstResult = service.getById(existingId)
 
         then:
         firstResult.present
+        println(database.getAllItems())
 
         when:
         def secondResult = service.getById(nonexistentId)
@@ -220,13 +223,13 @@ class ItemServiceIntegrationTest extends Specification {
         def roomId = 3L
         def nonexistentItemId = 47L
         def existedItemId = 26L
-        final def oldRoom = database.getById(roomId).get()
+        final def oldRoom = database.getByProperty(roomId).get()
 
         when:
         def firstResult = service.deleteById(nonexistentItemId)
 
         then:
-        oldRoom == database.getById(roomId).get()
+        oldRoom == database.getByProperty(roomId).get()
         firstResult == Optional.empty()
 
         when:
@@ -234,7 +237,7 @@ class ItemServiceIntegrationTest extends Specification {
 
         then:
         secondResult.get().getId() == existedItemId
-        !database.getById(roomId).get().itemsList.contains(secondResult.get())
+        !database.getByProperty(roomId).get().itemsList.contains(secondResult.get())
     }
 
     def "should delete Item with specified number if exist"() {
@@ -242,13 +245,13 @@ class ItemServiceIntegrationTest extends Specification {
         def roomNumber = "102"
         def nonexistentItemNumber = "NEI-22/455"
         def existedItemNumber = "PŚT-11/444"
-        final def oldRoom = database.getByUniqueProperty(roomNumber).get()
+        final def oldRoom = database.getByProperty(roomNumber).get()
 
         when:
         def firstResult = service.deleteByNumber(nonexistentItemNumber)
 
         then:
-        oldRoom == database.getByUniqueProperty(roomNumber).get()
+        oldRoom == database.getByProperty(roomNumber).get()
         firstResult == Optional.empty()
 
         when:
@@ -257,7 +260,7 @@ class ItemServiceIntegrationTest extends Specification {
         then:
         secondResult.get().getInventoryNumber() == existedItemNumber
         service.getByNumber(existedItemNumber).empty
-        !database.getByUniqueProperty(roomNumber).get().itemsList.contains(secondResult.get())
+        !database.getByProperty(roomNumber).get().itemsList.contains(secondResult.get())
     }
 
     def "should not update and return EMPTY Optional when Item with given id does not exist"() {

@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Item implements Numerable {
+public class Item implements InternallyStorable {
 
   private Long id;
 
