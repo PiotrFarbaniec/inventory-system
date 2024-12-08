@@ -1,6 +1,6 @@
 package pl.inventory.system.model;
 
-public interface Numerable {
+public interface Storable {
 
   Long getId();
 

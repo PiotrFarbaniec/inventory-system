@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import pl.inventory.system.database.Database;
+import pl.inventory.system.model.Item;
 import pl.inventory.system.model.Room;
 import pl.inventory.system.utils.FileManager;
 import pl.inventory.system.utils.FileService;
@@ -53,12 +54,13 @@ public class FileBasedDatabaseConfig {
   }
 
   @Bean
-  public Database<Room> roomDatabase(
+  public Database<Room, Item> roomDatabase(
       FileService fileService,
       JsonSerializer serializer) {
     log.debug("File database has been initialised for objects of type Room");
-    return new FileBasedDatabase<>(
+    return new FileBasedDatabase(
         roomFilePath(),
+        itemIdProvider(fileService),
         roomIdProvider(fileService),
         fileService,
         serializer,
