@@ -30,50 +30,26 @@ public class RoomService {
   }
 
   public Optional<Room> getById(Long id) {
-    if (id == null) {
-      log.warn("Specified id of searched Room cannot be null");
-      return Optional.empty();
-    }
     return database.getByProperty(id);
   }
 
   public Optional<Room> getByNumber(String number) {
-    if (number == null) {
-      log.warn("Specified number of removing Room cannot be null");
-      return Optional.empty();
-    }
     return database.getByProperty(number);
   }
 
   public Optional<Room> deleteById(Long id) {
-    if (id == null) {
-      log.warn("Specified id of removing Room cannot be null");
-      return Optional.empty();
-    }
     return database.deleteByProperty(id);
   }
 
   public Optional<Room> deleteByNumber(String number) {
-    if (number == null) {
-      log.warn("Specified number of removing Room cannot be null");
-      return Optional.empty();
-    }
     return database.deleteByProperty(number);
   }
 
   public Optional<Room> updateById(Long id, Room updateRoom) {
-    if (id == null || updateRoom == null) {
-      log.warn("Update failed. One of the provided arguments (id or update Room) is null");
-      return Optional.empty();
-    }
     return database.updateByProperty(id, updateRoom);
   }
 
   public Optional<Room> updateByNumber(String number, Room updateRoom) {
-    if (number == null || updateRoom == null) {
-      log.warn("Update failed. One of the provided arguments (number or update Room) is null");
-      return Optional.empty();
-    }
     return database.updateByProperty(number, updateRoom);
   }
 }

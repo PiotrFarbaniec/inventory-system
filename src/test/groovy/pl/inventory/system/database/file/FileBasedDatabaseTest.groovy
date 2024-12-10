@@ -14,47 +14,81 @@ import spock.lang.Specification
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.LocalDate
 
 class FileBasedDatabaseTest extends Specification {
-    def filePath = Files.createTempFile("roomTest", ".txt")
-    def idRoomPath = Files.createTempFile("idRoomTest", ".txt")
-    def idItemPath = Files.createTempFile("idItemTest", ".txt")
-    def fileService = new FileService()
-    def serializer = new JsonSerializer()
-    def itemIdProvider = new IdProvider(idItemPath, fileService)
-    def roomIdProvider = new IdProvider(idRoomPath, fileService)
+    private def filePath = Files.createTempFile("roomTest", ".txt")
+    private def idRoomPath = Files.createTempFile("idRoomTest", ".txt")
+    private def idItemPath = Files.createTempFile("idItemTest", ".txt")
+    private def fileService = new FileService()
+    private def serializer = new JsonSerializer()
+    private def itemIdProvider = new IdProvider(idItemPath, fileService)
+    private def roomIdProvider = new IdProvider(idRoomPath, fileService)
 
-    private final Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
-    private final ObjectsProvider source = new ObjectsProvider()
+    private Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
+    private ObjectsProvider source = new ObjectsProvider()
 
-    def "should not update and return empty Optional if Room with provided id doesn't exist"() {
+    def "should not save if type of given property is wrong"() {
         given:
-        def noSuchId = 4L
-        database.save(source.room1)
-        def updateRoom = source.room4
+        def wrongRoomProperty = LocalDate.of(2010, 9, 12)
+        def itemToSave = source.computer[1]
 
         when:
-        def updateResult = database.updateByProperty(noSuchId, updateRoom)
+        def savingResult = database.saveInObjectWithProperty(wrongRoomProperty, itemToSave)
 
         then:
-        updateResult == Optional.empty()
+        savingResult == Optional.empty()
     }
 
-    def "should not update and return empty Optional if Room with provided number doesn't exist"() {
+    def "should return empty list for wrong type of searched Room property"() {
         given:
-        def noSuchRoomNumber = "310"
-        def updateRoom = source.room2
+        def wrongRoomProperty = LocalDate.of(2010, 9, 12)
+
         when:
-        def updateResult = database.updateByProperty(noSuchRoomNumber, updateRoom)
+        def searchingResult = database.getAllFromObjectWithProperty(wrongRoomProperty)
 
         then:
-        updateResult == Optional.empty()
+        searchingResult == List.of()
     }
 
-    /*def "deletion of files after tests"() {
+    def "should return empty Optional for wrong type of searched Item property"() {
+        given:
+        def wrongItemProperty = LocalDate.of(2010, 9, 12)
+
+        when:
+        def searchingResult = database.getItemByProperty(wrongItemProperty)
+
+        then:
+        searchingResult == Optional.empty()
+    }
+
+    def "should return empty Optional for wrong type of removed Item property"() {
+        given:
+        def wrongItemProperty = LocalDate.of(2010, 9, 12)
+
+        when:
+        def deletingResult = database.deleteItemByProperty(wrongItemProperty)
+
+        then:
+        deletingResult == Optional.empty()
+    }
+
+    def "should return empty Optional for wrong property type of updating Item"() {
+        given:
+        def wrongItemProperty = LocalDate.of(2010, 9, 12)
+        def updateItem = source.wardrobe[1]
+
+        when:
+        def deletingResult = database.updateItemByProperty(wrongItemProperty, updateItem)
+
+        then:
+        deletingResult == Optional.empty()
+    }
+
+    def "deletion of files after tests"() {
         cleanup:
         Files.deleteIfExists(filePath)
         Files.deleteIfExists(idRoomPath)
-        Files.deleteIfExists(Path.of(directory))
-    }*/
+        //Files.deleteIfExists(Path.of(directory))
+    }
 }
