@@ -22,19 +22,19 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
 
   protected static final Lock LOCK = new ReentrantLock();
   private final Path filePath;
-  private final IdProvider roomIdProvider;
+  private final IdProvider idProvider;
   private final FileService fileService;
   private final JsonSerializer serializer;
   private final Class<T1> cls;
 
   protected AbstractFileDatabase(Path roomFilePath,
-                                 IdProvider roomIdProvider,
+                                 IdProvider idProvider,
                                  FileService fileService,
                                  JsonSerializer serializer,
                                  Class<T1> cls) {
     log.info("File database initialised for type {}", cls.getSimpleName());
     this.filePath = roomFilePath;
-    this.roomIdProvider = roomIdProvider;
+    this.idProvider = idProvider;
     this.fileService = fileService;
     this.serializer = serializer;
     this.cls = cls;
@@ -46,7 +46,7 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
     try {
       File itemFile = new File(filePath.toString());
       FileManager.createFile(itemFile);
-      Long currentId = roomIdProvider.getCurrentIdAndIncrement();
+      Long currentId = idProvider.getCurrentIdAndIncrement();
       item.setId(currentId);
       fileService.appendLineToFile(filePath, serializer.objectToJson(item));
       log.debug("\"{} {}\" successfully stored in database", cls.getSimpleName(), currentId);
@@ -79,12 +79,22 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
   public <P> Optional<T1> getByProperty(P property) {
     LOCK.lock();
     try {
+      Optional<T1> searchedObject = Optional.empty();
       if (property instanceof String roomNumber) {
-        return getByNumber(roomNumber);
+        searchedObject = getAll().stream()
+            .filter(item -> item.getNumber().equalsIgnoreCase(roomNumber))
+            .findFirst();
       } else if (property instanceof Long roomId) {
-        return getById(roomId);
+        searchedObject = getAll().stream()
+            .filter(item -> item.getId().compareTo(roomId) == 0)
+            .findFirst();
       }
-      return Optional.empty();
+      if (searchedObject.isPresent()) {
+        log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), property);
+        return searchedObject;
+      }
+      log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), property);
+      return searchedObject;
     } finally {
       LOCK.unlock();
     }
@@ -120,7 +130,7 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
     }
   }
 
-  private Optional<T1> getById(Long roomId) {
+  /* private Optional<T1> getById(Long roomId) {
     LOCK.lock();
     try {
       Optional<T1> searchedObject = getAll().stream()
@@ -154,12 +164,12 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
     } finally {
       LOCK.unlock();
     }
-  }
+  }*/
 
   private Optional<T1> updateById(Long roomId, T1 updateItem) {
     LOCK.lock();
     try {
-      Optional<T1> optionalItem = getById(roomId);
+      Optional<T1> optionalItem = getByProperty(roomId);
       if (optionalItem.isPresent()) {
         T1 oldItem = optionalItem.get();
         List<T1> itemsList = getAll();
@@ -187,7 +197,7 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
   private Optional<T1> updateByNumber(String roomNumber, T1 updateItem) {
     LOCK.lock();
     try {
-      Optional<T1> optionalItem = getByNumber(roomNumber);
+      Optional<T1> optionalItem = getByProperty(roomNumber);
       if (optionalItem.isPresent()) {
         T1 oldItem = optionalItem.get();
         List<T1> itemsList = getAll();
@@ -215,7 +225,7 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
   private Optional<T1> deleteByNumber(String roomNumber) {
     LOCK.lock();
     try {
-      Optional<T1> optionalToRemove = getByNumber(roomNumber);
+      Optional<T1> optionalToRemove = getByProperty(roomNumber);
       if (optionalToRemove.isPresent()) {
         FileManager.makeBackupFile(filePath);
         List<String> itemsToSave = getAll().stream()
@@ -239,7 +249,7 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
   private Optional<T1> deleteById(Long roomId) {
     LOCK.lock();
     try {
-      Optional<T1> optionalToRemove = getById(roomId);
+      Optional<T1> optionalToRemove = getByProperty(roomId);
       if (optionalToRemove.isPresent()) {
         FileManager.makeBackupFile(filePath);
         List<String> itemsToSave = getAll().stream()

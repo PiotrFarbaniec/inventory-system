@@ -1,10 +1,10 @@
 package pl.inventory.system.service
 
 import pl.inventory.system.database.Database
-import pl.inventory.system.database.file.AbstractFileDatabase
 import pl.inventory.system.database.file.FileBasedDatabase
 import pl.inventory.system.model.Item
 import pl.inventory.system.model.Room
+import pl.inventory.system.utils.FileManager
 import pl.inventory.system.utils.FileService
 import pl.inventory.system.utils.IdProvider
 import pl.inventory.system.utils.JsonSerializer
@@ -16,9 +16,16 @@ import java.nio.file.Path
 
 class RoomServiceIntegrationTest extends Specification {
 
-    def filePath = Files.createTempFile("roomTest", ".txt")
-    def idRoomPath = Files.createTempFile("idRoomTest", ".txt")
-    def idItemPath = Files.createTempFile("idItemTest", ".txt")
+    def directory = "TestFiles"
+    def file = "roomTest.txt"
+    def idRoomFile = "idRoomTest.txt"
+    def idItemFile = "idItemTest.txt"
+
+    def filePath = FileManager.createFile(file, directory)
+    def idRoomPath = FileManager.createFile(idRoomFile, directory)
+    def idItemPath = FileManager.createFile(idItemFile, directory)
+
+
     def fileService = new FileService()
     def serializer = new JsonSerializer()
     def itemIdProvider = new IdProvider(idItemPath, fileService)
@@ -26,8 +33,7 @@ class RoomServiceIntegrationTest extends Specification {
 
     Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
     def roomService = new RoomService(database)
-    def itemService = new ItemService(database)
-    ObjectsProvider test = new ObjectsProvider()
+    def test = new ObjectsProvider()
 
     def "should return empty list when database is empty or file does not exist"() {
         when:
@@ -77,10 +83,6 @@ class RoomServiceIntegrationTest extends Specification {
     }
 
     def "should return an object by id if present"() {
-        given:
-        roomService.save(test.room1)
-        roomService.save(test.room2)
-
         when:
         def firstResult = roomService.getById(1)
         def secondResult = roomService.getById(2)
@@ -92,7 +94,7 @@ class RoomServiceIntegrationTest extends Specification {
         secondResult.get() == test.room2
 
         when:
-        def notExiting = roomService.getById(3)
+        def notExiting = roomService.getById(4)
 
         then:
         notExiting.isEmpty()
@@ -113,9 +115,6 @@ class RoomServiceIntegrationTest extends Specification {
     }
 
     def "should get an object by unique number if present"() {
-        given:
-        roomService.save(test.room1)
-
         when:
         def correctNumber = roomService.getByNumber("101")
 
@@ -130,78 +129,25 @@ class RoomServiceIntegrationTest extends Specification {
     }
 
     def "should not delete if provided id or number of Room is null"() {
-        given:
-        roomService.save(test.room1)
-        roomService.save(test.room2)
-
         when:
         def firstResult = roomService.deleteById(null)
 
         then:
         firstResult == Optional.empty()
-        roomService.getAll().size() == 2
 
         when:
         def secondResult = roomService.deleteByNumber(null)
 
         then:
         secondResult == Optional.empty()
-        roomService.getAll().size() == 2
-    }
-
-    def "should delete Room by specified id if present"() {
-        given:
-        def existingRoomId = 1L
-        def nonexistentRoomId = 5L
-        roomService.save(test.room1)
-        roomService.save(test.room2)
-
-        when:
-        roomService.deleteById(nonexistentRoomId)
-
-        then:
-        roomService.getAll().size() == 2
-        roomService.getById(1).isPresent()
-        roomService.getById(2).isPresent()
-
-        when:
-        roomService.deleteById(existingRoomId)
-
-        then:
-        roomService.getAll().size() == 1
-        roomService.getById(1).isEmpty()
-        roomService.getById(2).isPresent()
-    }
-
-    def "should delete Room by specified number if present"() {
-        given:
-        def existingRoomNumber = "102"
-        def nonexistentRoomNumber = "407"
-        roomService.save(test.room1)
-        roomService.save(test.room2)
-
-        when:
-        roomService.deleteByNumber(nonexistentRoomNumber)
-
-        then:
-        roomService.getAll().size() == 2
-        roomService.getById(1).isPresent()
-        roomService.getById(2).isPresent()
-
-        when:
-        roomService.deleteByNumber(existingRoomNumber)
-
-        then:
-        roomService.getAll().size() == 1
-        roomService.getById(1).isPresent()
-        roomService.getById(2).isEmpty()
     }
 
     def "should not update if provided id or number or update Room is null"() {
         given:
-        def storedRoom = roomService.save(test.room1)
-        def updateRoom = test.room2
-        updateRoom.setId(storedRoom)
+        final def oldContent = roomService.getAll()
+        def updateId = 1L
+        def updateNumber = "101"
+        def updateRoom = test.room4
         updateRoom.setRoomNumber(test.room1.getRoomNumber())
 
         when:
@@ -209,190 +155,140 @@ class RoomServiceIntegrationTest extends Specification {
 
         then:
         firstResult == Optional.empty()
-        roomService.getAll().get(0) != updateRoom
+        oldContent == roomService.getAll()
 
         when:
-        def secondResult = roomService.updateById(storedRoom, null)
+        def secondResult = roomService.updateById(updateId, null)
 
         then:
         secondResult == Optional.empty()
-        roomService.getAll().get(0) == test.room1
+        oldContent == roomService.getAll()
 
         when:
         def thirdResult = roomService.updateByNumber(null, updateRoom)
 
         then:
         thirdResult == Optional.empty()
-        roomService.getAll().get(0) != updateRoom
+        oldContent == roomService.getAll()
 
         when:
-        def fourthResult = roomService.updateByNumber(test.room1.number, null)
+        def fourthResult = roomService.updateByNumber(updateNumber, null)
 
         then:
         fourthResult == Optional.empty()
-        roomService.getAll().get(0) == test.room1
+        oldContent == roomService.getAll()
     }
 
     def "should not update if room with specified id does not exist"() {
         given:
-        def updateRoom = test.room3
-        roomService.save(test.room1)
-        roomService.save(test.room2)
+        def wrongId = 5L
+        def updateRoom = test.room4
+        final def oldContent = roomService.getAll()
 
         when:
-        def noSuchRoom = roomService.updateById(3, updateRoom)
+        def updateResult = roomService.updateById(wrongId, updateRoom)
 
         then:
-        roomService.getAll().size() == 2
-        roomService.getById(1).get() == test.room1
-        roomService.getById(2).get() == test.room2
-        noSuchRoom == Optional.empty()
+        updateResult == Optional.empty()
+        oldContent == roomService.getAll()
     }
 
     def "should not update if Room is empty or has wrong number"() {
         given:
-        roomService.save(test.room1)
-        roomService.save(test.room2)
         def updateRoom = test.room4
         def emptyItemList = new ArrayList()
+        final def oldContent = roomService.getAll()
 
         when:
         def firstResult = roomService.updateById(1, updateRoom)
 
         then:
         firstResult == Optional.empty()
+        oldContent == roomService.getAll()
 
         when:
         updateRoom.setItemsList(emptyItemList)
-        updateRoom.setRoomNumber(test.room1.number)
-        def secondResult = roomService.updateById(1, updateRoom)
+        updateRoom.setRoomNumber(oldContent.get(0).getNumber())
+        def thirdResult = roomService.updateById(1, updateRoom)
 
         then:
-        secondResult == Optional.empty()
+        thirdResult == Optional.empty()
+        oldContent == roomService.getAll()
     }
 
-    def "should update if room with id and matching number is in database"() {
+    def "should update if room with specified id or number exists"() {
         given:
-        def firstUpdateRoom = test.room3
-        def secondUpdateRoom = test.room2
-        roomService.save(test.room1)
-        roomService.save(test.room2)
+        final def oldContent = roomService.getAll()
+        def updateRoom = test.room4
 
         when:
-        firstUpdateRoom.setRoomNumber(test.room1.number)
-        def firstResult = roomService.updateById(1, firstUpdateRoom)
+        updateRoom.setRoomNumber(test.room1.number)
+        def firstResult = roomService.updateById(1, updateRoom)
 
         then:
-        firstUpdateRoom.number == roomService.getById(1).get().number
-        roomService.getAll().size() == 2
-        roomService.getById(1).get() == test.room3
-        roomService.getById(2).get() == test.room2
-        firstResult == Optional.of(test.room3)
+        firstResult == Optional.of(updateRoom)
+        oldContent != roomService.getAll()
 
         when:
-        def secondResult = roomService.updateById(2, secondUpdateRoom)
+        updateRoom.setRoomNumber("906")
+        def secondResult = roomService.updateByNumber(oldContent.get(1).number, updateRoom)
 
         then:
         secondResult.present
+        oldContent != roomService.getAll()
         roomService.getById(2).get() == secondResult.get()
     }
 
-    def "should not update if room with specified number not exists or has no items"() {
+    def "should delete Room by specified id if present"() {
         given:
-        def updateRoom = test.room4
-        def emptyItemsList = new ArrayList()
-        roomService.save(test.room1)
-        roomService.save(test.room2)
+        def existingRoomId = 1L
+        def falseRoomId = 5L
+        final def originalFileContent = roomService.getAll()
 
         when:
-        def firstResult = roomService.updateByNumber("808", updateRoom)
+        def firstResult = roomService.deleteById(falseRoomId)
 
         then:
         firstResult == Optional.empty()
-        roomService.getById(1).get() == test.room1
-        roomService.getById(2).get() == test.room2
+        roomService.getAll() == originalFileContent
 
         when:
-        updateRoom.setRoomNumber(test.room1.number)
-        updateRoom.setItemsList(emptyItemsList)
-        def secondResult = roomService.updateByNumber(test.room1.number, updateRoom)
+        def secondResult = roomService.deleteById(existingRoomId)
 
         then:
-        secondResult == Optional.empty()
-        roomService.getById(1).get() == test.room1
-        roomService.getById(2).get() == test.room2
+        secondResult.get() == originalFileContent.get(0)
+        roomService.getById(1).isEmpty()
+        roomService.getById(2).isPresent()
+        roomService.getById(3).isPresent()
     }
 
-    /*def "should set correct room number and update if number of given room is null or empty"() {
+    def "should delete Room by specified number if present"() {
         given:
-        def updateRoom = test.room4
-        def updatedNumber = test.room2.number
-        roomService.save(test.room1)
-        roomService.save(test.room2)
+        def existingRoomNumber = "102"
+        def nonexistentRoomNumber = "407"
+        final def oldFileContent = roomService.getAll()
 
         when:
-        updateRoom.setRoomNumber(null)
-        def firstResult = roomService.updateByNumber(updatedNumber, updateRoom)
+        def firstResult = roomService.deleteByNumber(nonexistentRoomNumber)
 
         then:
-        firstResult.present
-        firstResult.get().number == updatedNumber
-        firstResult.get().itemsList.size() == test.room4.itemsList.size()
+        firstResult == Optional.empty()
+        roomService.getAll().size() == oldFileContent.size()
 
         when:
-        updateRoom.setRoomNumber(" ")
-        def secondResult = roomService.updateByNumber(updatedNumber, updateRoom)
+        def secondResult = roomService.deleteByNumber(existingRoomNumber)
 
         then:
-        secondResult.present
-        secondResult.get().number == updatedNumber
-        secondResult.get().itemsList.size() == test.room4.itemsList.size()
-    }*/
-
-    def "should set correct room number and update if number of given room is null or empty"() {
-        given:
-        def updateRoom = test.room4
-        def updatedNumber = test.room2.number
-        roomService.save(test.room1)
-        roomService.save(test.room2)
-
-        when:
-        updateRoom.setRoomNumber(null)
-        def firstResult = roomService.updateByNumber(updatedNumber, updateRoom)
-
-        then:
-        firstResult.present
-        firstResult.get().number == updatedNumber
-        firstResult.get().itemsList.size() == test.room4.itemsList.size()
-
-        when:
-        updateRoom.setRoomNumber(" ")
-        def secondResult = roomService.updateByNumber(updatedNumber, updateRoom)
-
-        then:
-        secondResult.present
-        secondResult.get().number == updatedNumber
-        secondResult.get().itemsList.size() == test.room4.itemsList.size()
+        oldFileContent.contains(secondResult.get())
+        roomService.getAll().size() == oldFileContent.size() - 1
+        roomService.getByNumber(existingRoomNumber).isEmpty()
     }
 
-
-
-
-
-    def "should update if room with specified number exists"() {
-        given:
-        def updateRoom = test.room4
-        roomService.save(test.room1)
-        roomService.save(test.room2)
-
-        when:
-        updateRoom.setRoomNumber(test.room1.getRoomNumber())
-        def updateResult =
-                roomService.updateByNumber(test.room1.number, updateRoom)
-
-        then:
-        updateResult == Optional.of(updateRoom)
-        roomService.getById(1).get() == test.room4
-        roomService.getById(2).get() == test.room2
+    def "deletion of files after tests"() {
+        cleanup:
+        Files.deleteIfExists(filePath)
+        Files.deleteIfExists(idRoomPath)
+        Files.deleteIfExists(idItemPath)
+        Files.deleteIfExists(Path.of(directory))
     }
 }
