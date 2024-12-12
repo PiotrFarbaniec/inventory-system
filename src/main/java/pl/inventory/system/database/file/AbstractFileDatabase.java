@@ -130,42 +130,6 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
     }
   }
 
-  /* private Optional<T1> getById(Long roomId) {
-    LOCK.lock();
-    try {
-      Optional<T1> searchedObject = getAll().stream()
-          .filter(item -> item.getId().compareTo(roomId) == 0)
-          .findFirst();
-      if (searchedObject.isPresent()) {
-        log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), roomId);
-        return searchedObject;
-      } else {
-        log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomId);
-        return Optional.empty();
-      }
-    } finally {
-      LOCK.unlock();
-    }
-  }
-
-  private Optional<T1> getByNumber(String roomNumber) {
-    LOCK.lock();
-    try {
-      Optional<T1> searchedObject = getAll().stream()
-          .filter(item -> item.getNumber().equalsIgnoreCase(roomNumber))
-          .findFirst();
-      if (searchedObject.isPresent()) {
-        log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), roomNumber);
-        return searchedObject;
-      } else {
-        log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomNumber);
-        return Optional.empty();
-      }
-    } finally {
-      LOCK.unlock();
-    }
-  }*/
-
   private Optional<T1> updateById(Long roomId, T1 updateItem) {
     LOCK.lock();
     try {

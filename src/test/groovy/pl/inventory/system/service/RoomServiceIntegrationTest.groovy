@@ -25,15 +25,14 @@ class RoomServiceIntegrationTest extends Specification {
     def idRoomPath = FileManager.createFile(idRoomFile, directory)
     def idItemPath = FileManager.createFile(idItemFile, directory)
 
+    final def fileService = new FileService()
+    final def serializer = new JsonSerializer()
+    final def itemIdProvider = new IdProvider(idItemPath, fileService)
+    final def roomIdProvider = new IdProvider(idRoomPath, fileService)
 
-    def fileService = new FileService()
-    def serializer = new JsonSerializer()
-    def itemIdProvider = new IdProvider(idItemPath, fileService)
-    def roomIdProvider = new IdProvider(idRoomPath, fileService)
-
-    Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
-    def roomService = new RoomService(database)
-    def test = new ObjectsProvider()
+    final Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
+    final def roomService = new RoomService(database)
+    final def test = new ObjectsProvider()
 
     def "should return empty list when database is empty or file does not exist"() {
         when:
@@ -193,50 +192,51 @@ class RoomServiceIntegrationTest extends Specification {
         oldContent == roomService.getAll()
     }
 
-    def "should not update if Room is empty or has wrong number"() {
+    def "should not update if Room contains null/empty Items list"() {
         given:
         def updateRoom = test.room4
         def emptyItemList = new ArrayList()
         final def oldContent = roomService.getAll()
 
         when:
-        def firstResult = roomService.updateById(1, updateRoom)
-
-        then:
-        firstResult == Optional.empty()
-        oldContent == roomService.getAll()
-
-        when:
         updateRoom.setItemsList(emptyItemList)
-        updateRoom.setRoomNumber(oldContent.get(0).getNumber())
         def thirdResult = roomService.updateById(1, updateRoom)
 
         then:
         thirdResult == Optional.empty()
+        oldContent == roomService.getAll()
+
+        when:
+        updateRoom.setItemsList(null)
+        def fourthResult = roomService.updateById(1, updateRoom)
+
+        then:
+        fourthResult.empty
         oldContent == roomService.getAll()
     }
 
     def "should update if room with specified id or number exists"() {
         given:
         final def oldContent = roomService.getAll()
+        final def updatedRoomNumber = roomService.getById(1).get().number
         def updateRoom = test.room4
 
-        when:
-        updateRoom.setRoomNumber(test.room1.number)
+        when:   'when the updated room number is null it should be set according to the found'
+        updateRoom.setRoomNumber(null)
         def firstResult = roomService.updateById(1, updateRoom)
 
         then:
-        firstResult == Optional.of(updateRoom)
+        firstResult.get().number == updatedRoomNumber
         oldContent != roomService.getAll()
 
-        when:
-        updateRoom.setRoomNumber("906")
+        when:   'while Room updating, only Item list may change, not its number'
+        updateRoom.setRoomNumber('936')
         def secondResult = roomService.updateByNumber(oldContent.get(1).number, updateRoom)
 
         then:
         secondResult.present
         oldContent != roomService.getAll()
-        roomService.getById(2).get() == secondResult.get()
+        secondResult.get() != oldContent.get(1)
     }
 
     def "should delete Room by specified id if present"() {

@@ -50,11 +50,10 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
 
   @Override
   public <P> Optional<Room> getByProperty(P prop) {
-    if (prop != null) {
-      return super.getByProperty(prop);
+    if (prop == null) {
+      log.warn("Download from database failed. Specified argument is null.");
     }
-    log.warn("Download from database failed. Specified argument is null.");
-    return Optional.empty();
+    return super.getByProperty(prop);
   }
 
   @Override
@@ -64,30 +63,29 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
       if (property == null || updateRoom == null) {
         log.warn("Update failed. One of the provided arguments (number/id or update Room) is null");
         return Optional.empty();
+      } else if (updateRoom.getItemsList() == null || updateRoom.getItemsList().isEmpty()) {
+        log.warn("Update failed. Wrong content of update Room has been specified ({})", updateRoom);
+        return Optional.empty();
       }
-      Optional<Room> optionalToUpdate = getByProperty(property);
+      Optional<Room> optionalToUpdate = super.getByProperty(property);
       if (optionalToUpdate.isEmpty()) {
         log.warn("Update failed. Room: {} does not exist", property);
       } else {
         Room oldRoom = optionalToUpdate.get();
-        if (property instanceof String && !oldRoom.getRoomNumber().equalsIgnoreCase(updateRoom.getRoomNumber())) {
-          updateRoom.setRoomNumber(oldRoom.getRoomNumber());
-        }
-        if (Objects.equals(oldRoom.getRoomNumber(), updateRoom.getRoomNumber())
-            && !updateRoom.getItemsList().isEmpty()) {
-          if (oldRoom.getItemsList().size() == updateRoom.getItemsList().size()) {
-            for (int i = 0; i < updateRoom.getItemsList().size(); i++) {
-              updateRoom.getItemsList().get(i).setId(oldRoom.getItemsList().get(i).getId());
-            }
-          } else {
-            updateRoom.getItemsList().forEach(item -> item.setId(itemIdProvider.getCurrentIdAndIncrement()));
+        updateRoom.setRoomNumber(oldRoom.getRoomNumber());
+
+        if (oldRoom.getItemsList().size() == updateRoom.getItemsList().size()) {
+          for (int i = 0; i < updateRoom.getItemsList().size(); i++) {
+            updateRoom.getItemsList().get(i).setId(oldRoom.getItemsList().get(i).getId());
           }
-          log.debug("Update of \"Room: {}\" successfully completed.", property);
-          return super.updateByProperty(property, updateRoom);
+        } else {
+          updateRoom.getItemsList().forEach(item -> item.setId(itemIdProvider.getCurrentIdAndIncrement()));
         }
-        log.warn("Update of \"Room: {}\" failed. Mismatch number ({}) or empty Items list of provided Room (size: {})",
-            property, updateRoom.getRoomNumber(), updateRoom.getItemsList().size());
+        log.debug("Update of \"Room: {}\" successfully completed.", property);
+        return super.updateByProperty(property, updateRoom);
       }
+      log.warn("Update of \"Room: {}\" failed. Mismatch number ({}) or empty Items list of provided Room (size: {})",
+          property, updateRoom.getRoomNumber(), updateRoom.getItemsList().size());
       return Optional.empty();
     } finally {
       LOCK.unlock();
@@ -98,10 +96,10 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
   public <P> Optional<Room> deleteByProperty(P prop) {
     if (prop != null) {
       log.debug("Deletion of Room with specified {} successfully completed", prop);
-      return super.deleteByProperty(prop);
+    } else {
+      log.warn("Deletion failed. Room not found");
     }
-    log.warn("Deletion failed. Room {} not found", prop);
-    return Optional.empty();
+    return super.deleteByProperty(prop);
   }
 
   @Override
