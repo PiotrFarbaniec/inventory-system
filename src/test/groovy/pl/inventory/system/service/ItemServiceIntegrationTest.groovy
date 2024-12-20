@@ -1,43 +1,15 @@
 package pl.inventory.system.service
 
-
-import pl.inventory.system.ObjectsProvider
-import pl.inventory.system.database.Database
-import pl.inventory.system.database.file.FileBasedDatabase
+import pl.inventory.system.AbstractDatabaseTest
 import pl.inventory.system.model.Item
-import pl.inventory.system.model.Room
-import pl.inventory.system.utils.FileManager
-import pl.inventory.system.utils.FileService
-import pl.inventory.system.utils.IdProvider
-import pl.inventory.system.utils.JsonSerializer
-import spock.lang.Specification
 
-import java.nio.file.Files
-import java.nio.file.Path
 import java.time.LocalDate
 
-class ItemServiceIntegrationTest extends Specification {
-    private def directory = "TestFiles"
-    private def file = "roomTest.txt"
-    private def idRoomFile = "idRoomTest.txt"
-    private def idItemFile = "idItemTest.txt"
-    private final def filePath = FileManager.createFile(file, directory)
-    private final def idRoomPath = FileManager.createFile(idRoomFile, directory)
-    private final def idItemPath = FileManager.createFile(idItemFile, directory)
-
-    private final def fileService = new FileService()
-    private final def serializer = new JsonSerializer()
-    private final def itemIdProvider = new IdProvider(idItemPath, fileService)
-    private final def roomIdProvider = new IdProvider(idRoomPath, fileService)
-
-    private final Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
-    private final def itemService = new ItemService(database)
-    private final def roomService = new RoomService(database)
-    private final def source = new ObjectsProvider()
+class ItemServiceIntegrationTest extends AbstractDatabaseTest {
 
     def "should create entries for tests if database is empty"() {
         setup:
-        if (database.getAll().isEmpty()) {
+        if (fileDatabase.getAll().isEmpty()) {
             roomService.save(source.room1)
             roomService.save(source.room2)
             roomService.save(source.room3)
@@ -46,7 +18,7 @@ class ItemServiceIntegrationTest extends Specification {
 
     def "should override Item by specified Room id with current modification date if already exists"() {
         given:
-        final def oldRoom = database.getByProperty(1L).get()
+        final def oldRoom = fileDatabase.getByProperty(1L).get()
         def itemToSave = source.table[0]
         itemToSave.setModificationDate(LocalDate.of(2012, 02, 12))
 
@@ -63,7 +35,7 @@ class ItemServiceIntegrationTest extends Specification {
         given:
         def existingRoomId = 1L
         def nonexistentRoomId = 7L
-        final def oldRoom = database.getByProperty(existingRoomId)
+        final def oldRoom = fileDatabase.getByProperty(existingRoomId)
         def itemToSave = source.printer[1]
 
         when:
@@ -77,14 +49,14 @@ class ItemServiceIntegrationTest extends Specification {
 
         then:
         oldRoom.get().itemsList != secondResult.get().itemsList
-        database.getByProperty(existingRoomId).get().itemsList.contains(itemToSave)
+        fileDatabase.getByProperty(existingRoomId).get().itemsList.contains(itemToSave)
     }
 
     def "should overwrite with current modification date if Item exists in Room with specified number"() {
         given:
         def nonexistentRoomNumber = "603"
         def existingRoomNumber = "201"
-        final def oldRoom = database.getByProperty(existingRoomNumber)
+        final def oldRoom = fileDatabase.getByProperty(existingRoomNumber)
         def itemToSave = source.table[0]
 
         when:
@@ -104,7 +76,7 @@ class ItemServiceIntegrationTest extends Specification {
     def "should save given Item to Room with specified number"() {
         given:
         def roomNumber = "201"
-        final def oldRoom = database.getByProperty(roomNumber)
+        final def oldRoom = fileDatabase.getByProperty(roomNumber)
         def itemToSave = source.printer[0]
 
         when:
@@ -112,7 +84,7 @@ class ItemServiceIntegrationTest extends Specification {
 
         then:
         oldRoom.get() != result.get()
-        database.getByProperty(roomNumber).get().itemsList.contains(itemToSave)
+        fileDatabase.getByProperty(roomNumber).get().itemsList.contains(itemToSave)
     }
 
     def "should return all items saved in the rooms"() {
@@ -126,7 +98,7 @@ class ItemServiceIntegrationTest extends Specification {
         result == currentItemsNumber
     }
 
-    def "should return a list of all items saved in the room with the given number if exist"() {
+    def "should return a list of all items saved in the room with the given id/number if exist"() {
         given:
         def firstRoomNumber = "101"
         def firstRoomId = 1L
@@ -302,9 +274,6 @@ class ItemServiceIntegrationTest extends Specification {
 
     def "deletion of files after tests"() {
         cleanup:
-        Files.deleteIfExists(filePath)
-        Files.deleteIfExists(idRoomPath)
-        Files.deleteIfExists(idItemPath)
-        Files.deleteIfExists(Path.of(directory))
+        cleanDatabase()
     }
 }
