@@ -9,7 +9,7 @@
 
 buildscript {
     ext {
-        groovyVer = '3.0.13'
+        groovyVer = '3.0.17'
         spockCoreVer = '2.2-groovy-3.0'
         junitVer = '4.13.2'
         jupiterApiVer = '5.8.2'
@@ -77,8 +77,9 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-        vendor = JvmVendorSpec.ORACLE
+        languageVersion = JavaLanguageVersion.of(21)
+        //vendor = JvmVendorSpec.ORACLE
+        file('C:/Program Files/JAVA/openJDK-21_Temurin')
     }
 }
 
@@ -127,13 +128,13 @@ jacocoTestCoverageVerification {
         rule {
             limit {
                 counter = 'LINE'
-                minimum = 0.75
+                minimum = 0.85
             }
         }
         rule {
             limit {
                 counter = 'BRANCH'
-                minimum = 0.75
+                minimum = 0.85
             }
         }
     }
