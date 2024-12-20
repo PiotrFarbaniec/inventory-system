@@ -78,8 +78,6 @@ dependencies {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
-        //vendor = JvmVendorSpec.ORACLE
-        file('C:/Program Files/JAVA/openJDK-21_Temurin')
     }
 }
 
