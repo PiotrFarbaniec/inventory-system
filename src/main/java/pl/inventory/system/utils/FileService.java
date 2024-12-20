@@ -83,6 +83,15 @@ public class FileService {
     }
   }
 
+  public void cleanFileContent(Path path) {
+    String empty = "";
+    try {
+      Files.write(path, empty.getBytes(StandardCharsets.UTF_8), StandardOpenOption.TRUNCATE_EXISTING);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   /**
    * Reads and returns the contents of the specified file as {@link java.util.List}<{@link java.lang.String}>.
    * @param path the {@link java.nio.file.Path} value of the file whose contents are to be read;

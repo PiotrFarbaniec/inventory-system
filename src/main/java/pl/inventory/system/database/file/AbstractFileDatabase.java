@@ -93,23 +93,8 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
         log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), property);
         return searchedObject;
       }
-      log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), property);
+      log.warn("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), property);
       return searchedObject;
-    } finally {
-      LOCK.unlock();
-    }
-  }
-
-  @Override
-  public <P> Optional<T1> updateByProperty(P property, T1 updateItem) {
-    LOCK.lock();
-    try {
-      if (property instanceof Long roomId) {
-        return updateById(roomId, updateItem);
-      } else if (property instanceof String roomNumber) {
-        return updateByNumber(roomNumber, updateItem);
-      }
-      return Optional.empty();
     } finally {
       LOCK.unlock();
     }
@@ -119,151 +104,56 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
   public <P> Optional<T1> deleteByProperty(P property) {
     LOCK.lock();
     try {
-      if (property instanceof String roomNumber) {
-        return deleteByNumber(roomNumber);
-      } else if (property instanceof Long roomId) {
-        return deleteById(roomId);
-      }
-      return Optional.empty();
-    } finally {
-      LOCK.unlock();
-    }
-  }
-
-  /* private Optional<T1> getById(Long roomId) {
-    LOCK.lock();
-    try {
-      Optional<T1> searchedObject = getAll().stream()
-          .filter(item -> item.getId().compareTo(roomId) == 0)
-          .findFirst();
-      if (searchedObject.isPresent()) {
-        log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), roomId);
-        return searchedObject;
-      } else {
-        log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomId);
-        return Optional.empty();
-      }
-    } finally {
-      LOCK.unlock();
-    }
-  }
-
-  private Optional<T1> getByNumber(String roomNumber) {
-    LOCK.lock();
-    try {
-      Optional<T1> searchedObject = getAll().stream()
-          .filter(item -> item.getNumber().equalsIgnoreCase(roomNumber))
-          .findFirst();
-      if (searchedObject.isPresent()) {
-        log.debug("Download \"{} {}\" successfully completed.", cls.getSimpleName(), roomNumber);
-        return searchedObject;
-      } else {
-        log.debug("Download failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomNumber);
-        return Optional.empty();
-      }
-    } finally {
-      LOCK.unlock();
-    }
-  }*/
-
-  private Optional<T1> updateById(Long roomId, T1 updateItem) {
-    LOCK.lock();
-    try {
-      Optional<T1> optionalItem = getByProperty(roomId);
-      if (optionalItem.isPresent()) {
-        T1 oldItem = optionalItem.get();
-        List<T1> itemsList = getAll();
-        final int optionalIndex = itemsList.indexOf(oldItem);
+      Optional<T1> optionalToRemove = getByProperty(property);
+      if (optionalToRemove.isPresent()) {
         FileManager.makeBackupFile(filePath);
-        updateItem.setId(roomId);
-        List<T1> updatedList = itemsList.stream()
-            .filter(item -> !Objects.equals(item, oldItem))
-            .collect(Collectors.toList());
-        updatedList.add(optionalIndex, updateItem);
-        fileService.writeLinesToFile(filePath, updatedList.stream().map(serializer::objectToJson).toList());
-        if (getAll().contains(updateItem)) {
+        T1 toRemove = optionalToRemove.get();
+        List<String> toSave = getAll().stream()
+            .filter(item -> !(Objects.equals(item.getId(), toRemove.getId())))
+            .map(serializer::objectToJson)
+            .toList();
+        if (toSave.isEmpty()) {
+          log.debug("Last \"{} {}\" successfully deleted, the database is empty. File backup has been removed",
+              cls.getSimpleName(), property);
+          fileService.cleanFileContent(filePath);
           FileManager.deleteBackupFile(filePath);
+        } else {
+          fileService.writeLinesToFile(filePath, toSave);
+          FileManager.deleteBackupFile(filePath);
+          log.debug("Delete of the \"{} {}\" successfully completed.", cls.getSimpleName(), property);
         }
-        log.debug("Update of the \"{} {}\" successfully completed.", cls.getSimpleName(), roomId);
-        return Optional.of(updateItem);
+        return optionalToRemove;
       }
-      log.debug("Update failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomId);
+      log.debug("Delete failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), property);
       return Optional.empty();
     } finally {
       LOCK.unlock();
     }
   }
 
-  private Optional<T1> updateByNumber(String roomNumber, T1 updateItem) {
+  @Override
+  public <P> Optional<T1> updateByProperty(P property, T1 updateItem) {
     LOCK.lock();
     try {
-      Optional<T1> optionalItem = getByProperty(roomNumber);
+      Optional<T1> optionalItem = getByProperty(property);
       if (optionalItem.isPresent()) {
-        T1 oldItem = optionalItem.get();
-        List<T1> itemsList = getAll();
-        final int optionalIndex = itemsList.indexOf(oldItem);
         FileManager.makeBackupFile(filePath);
+        T1 oldItem = optionalItem.get();
+        List<T1> itemList = getAll();
+        final int oldIndex = itemList.indexOf(oldItem);
         updateItem.setId(oldItem.getId());
-        List<T1> updatedList = itemsList.stream()
+        List<T1> updatedList = itemList.stream()
             .filter(item -> !Objects.equals(item, oldItem))
             .collect(Collectors.toList());
-        updatedList.add(optionalIndex, updateItem);
+        updatedList.add(oldIndex, updateItem);
         fileService.writeLinesToFile(filePath, updatedList.stream().map(serializer::objectToJson).toList());
         if (getAll().contains(updateItem)) {
           FileManager.deleteBackupFile(filePath);
         }
-        log.debug("Update of the \"{} {}\" successfully completed.", cls.getSimpleName(), roomNumber);
+        log.debug("Update of the \"{} {}\" successfully completed.", cls.getSimpleName(), property);
         return Optional.of(updateItem);
       }
-      log.debug("Update failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomNumber);
-      return Optional.empty();
-    } finally {
-      LOCK.unlock();
-    }
-  }
-
-  private Optional<T1> deleteByNumber(String roomNumber) {
-    LOCK.lock();
-    try {
-      Optional<T1> optionalToRemove = getByProperty(roomNumber);
-      if (optionalToRemove.isPresent()) {
-        FileManager.makeBackupFile(filePath);
-        List<String> itemsToSave = getAll().stream()
-            .filter(item -> !item.getNumber().equalsIgnoreCase(roomNumber))
-            .map(serializer::objectToJson)
-            .toList();
-        fileService.writeLinesToFile(filePath, itemsToSave);
-        if (!(getAll().isEmpty() && getAll().contains(optionalToRemove.get()))) {
-          FileManager.deleteBackupFile(filePath);
-        }
-        log.debug("Delete of the \"{} {}\" successfully completed.", cls.getSimpleName(), roomNumber);
-        return optionalToRemove;
-      }
-      log.debug("Delete failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomNumber);
-      return Optional.empty();
-    } finally {
-      LOCK.unlock();
-    }
-  }
-
-  private Optional<T1> deleteById(Long roomId) {
-    LOCK.lock();
-    try {
-      Optional<T1> optionalToRemove = getByProperty(roomId);
-      if (optionalToRemove.isPresent()) {
-        FileManager.makeBackupFile(filePath);
-        List<String> itemsToSave = getAll().stream()
-            .filter(item -> !Objects.equals(item.getId(), roomId))
-            .map(serializer::objectToJson)
-            .toList();
-        fileService.writeLinesToFile(filePath, itemsToSave);
-        if (!(getAll().isEmpty() && getAll().contains(optionalToRemove.get()))) {
-          FileManager.deleteBackupFile(filePath);
-        }
-        log.debug("Delete of the \"{} {}\" successfully completed.", cls.getSimpleName(), roomId);
-        return optionalToRemove;
-      }
-      log.debug("Delete failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), roomId);
+      log.debug("Update failed. The \"{} {}\" does not exist in the database.", cls.getSimpleName(), property);
       return Optional.empty();
     } finally {
       LOCK.unlock();

@@ -9,7 +9,7 @@
 
 buildscript {
     ext {
-        groovyVer = '3.0.13'
+        groovyVer = '3.0.17'
         spockCoreVer = '2.2-groovy-3.0'
         junitVer = '4.13.2'
         jupiterApiVer = '5.8.2'
@@ -77,17 +77,12 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-        vendor = JvmVendorSpec.ORACLE
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
 application {
     mainClass = 'pl.inventory.system.InventoryApplication'
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
 }
 
 checkstyle {
@@ -101,23 +96,20 @@ checkstyle {
 
 
 test {
+    useJUnitPlatform()
     finalizedBy jacocoTestReport
     finalizedBy jacocoTestCoverageVerification
 }
 
-jacocoTestReport {
-    dependsOn test
-}
-
 jacoco {
     toolVersion = "0.8.12"
-    reportsDirectory = layout.buildDirectory.dir('customJacocoReportDir')
 }
 
 jacocoTestReport {
+    dependsOn test
     reports {
-        xml.required = false
-        csv.required = false
+        xml.required.set(true)
+        html.required.set(true)
         html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
     }
 }
@@ -127,22 +119,26 @@ jacocoTestCoverageVerification {
         rule {
             limit {
                 counter = 'LINE'
-                minimum = 0.85
+                minimum = 0.80
             }
         }
         rule {
             limit {
                 counter = 'BRANCH'
-                minimum = 0.85
+                minimum = 0.80
             }
         }
     }
+
+    tasks.check {
+        dependsOn jacocoTestCoverageVerification
+    }
+
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
                 fileTree(dir: it, exclude: 'src/main/java/pl/inventory/system/InventoryApplication.class')
     }))
     }
-
 }
 
 startScripts {

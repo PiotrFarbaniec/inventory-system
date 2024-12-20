@@ -1,32 +1,10 @@
 package pl.inventory.system.database.file
 
-import pl.inventory.system.ObjectsProvider
-import pl.inventory.system.database.Database
-import pl.inventory.system.model.Item
-import pl.inventory.system.model.Room
-import pl.inventory.system.service.ItemService
-import pl.inventory.system.service.RoomService
-import pl.inventory.system.utils.FileManager
-import pl.inventory.system.utils.FileService
-import pl.inventory.system.utils.IdProvider
-import pl.inventory.system.utils.JsonSerializer
-import spock.lang.Specification
+import pl.inventory.system.AbstractDatabaseTest
 
-import java.nio.file.Files
-import java.nio.file.Path
 import java.time.LocalDate
 
-class FileBasedDatabaseTest extends Specification {
-    private def filePath = Files.createTempFile("roomTest", ".txt")
-    private def idRoomPath = Files.createTempFile("idRoomTest", ".txt")
-    private def idItemPath = Files.createTempFile("idItemTest", ".txt")
-    private def fileService = new FileService()
-    private def serializer = new JsonSerializer()
-    private def itemIdProvider = new IdProvider(idItemPath, fileService)
-    private def roomIdProvider = new IdProvider(idRoomPath, fileService)
-
-    private Database<Room, Item> database = new FileBasedDatabase(filePath, itemIdProvider, roomIdProvider, fileService, serializer, Room.class)
-    private ObjectsProvider source = new ObjectsProvider()
+class FileBasedDatabaseTest extends AbstractDatabaseTest {
 
     def "should not save if type of given property is wrong"() {
         given:
@@ -34,7 +12,7 @@ class FileBasedDatabaseTest extends Specification {
         def itemToSave = source.computer[1]
 
         when:
-        def savingResult = database.saveInObjectWithProperty(wrongRoomProperty, itemToSave)
+        def savingResult = fileDatabase.saveInObjectWithProperty(wrongRoomProperty, itemToSave)
 
         then:
         savingResult == Optional.empty()
@@ -45,7 +23,7 @@ class FileBasedDatabaseTest extends Specification {
         def wrongRoomProperty = LocalDate.of(2010, 9, 12)
 
         when:
-        def searchingResult = database.getAllFromObjectWithProperty(wrongRoomProperty)
+        def searchingResult = fileDatabase.getAllFromObjectWithProperty(wrongRoomProperty)
 
         then:
         searchingResult == List.of()
@@ -56,7 +34,7 @@ class FileBasedDatabaseTest extends Specification {
         def wrongItemProperty = LocalDate.of(2010, 9, 12)
 
         when:
-        def searchingResult = database.getItemByProperty(wrongItemProperty)
+        def searchingResult = fileDatabase.getItemByProperty(wrongItemProperty)
 
         then:
         searchingResult == Optional.empty()
@@ -67,7 +45,7 @@ class FileBasedDatabaseTest extends Specification {
         def wrongItemProperty = LocalDate.of(2010, 9, 12)
 
         when:
-        def deletingResult = database.deleteItemByProperty(wrongItemProperty)
+        def deletingResult = fileDatabase.deleteItemByProperty(wrongItemProperty)
 
         then:
         deletingResult == Optional.empty()
@@ -79,7 +57,7 @@ class FileBasedDatabaseTest extends Specification {
         def updateItem = source.wardrobe[1]
 
         when:
-        def deletingResult = database.updateItemByProperty(wrongItemProperty, updateItem)
+        def deletingResult = fileDatabase.updateItemByProperty(wrongItemProperty, updateItem)
 
         then:
         deletingResult == Optional.empty()
@@ -87,8 +65,6 @@ class FileBasedDatabaseTest extends Specification {
 
     def "deletion of files after tests"() {
         cleanup:
-        Files.deleteIfExists(filePath)
-        Files.deleteIfExists(idRoomPath)
-        //Files.deleteIfExists(Path.of(directory))
+        cleanDatabase()
     }
 }

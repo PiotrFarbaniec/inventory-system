@@ -3,6 +3,7 @@ package pl.inventory.system.database.file;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,7 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
   public Long save(Room room) {
     LOCK.lock();
     try {
-      if (room != null) {
+      if (room != null && room.getItemsList() != null && !room.getItemsList().isEmpty()) {
         room.getItemsList()
             .forEach(item -> item.setId(itemIdProvider.getCurrentIdAndIncrement()));
         return super.save(room);
@@ -50,11 +51,10 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
 
   @Override
   public <P> Optional<Room> getByProperty(P prop) {
-    if (prop != null) {
-      return super.getByProperty(prop);
+    if (prop == null) {
+      log.warn("Download from database failed. Specified argument is null.");
     }
-    log.warn("Download from database failed. Specified argument is null.");
-    return Optional.empty();
+    return super.getByProperty(prop);
   }
 
   @Override
@@ -64,30 +64,29 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
       if (property == null || updateRoom == null) {
         log.warn("Update failed. One of the provided arguments (number/id or update Room) is null");
         return Optional.empty();
+      } else if (updateRoom.getItemsList() == null || updateRoom.getItemsList().isEmpty()) {
+        log.warn("Update failed. Wrong content of update Room has been specified ({})", updateRoom);
+        return Optional.empty();
       }
-      Optional<Room> optionalToUpdate = getByProperty(property);
+      Optional<Room> optionalToUpdate = super.getByProperty(property);
       if (optionalToUpdate.isEmpty()) {
         log.warn("Update failed. Room: {} does not exist", property);
       } else {
         Room oldRoom = optionalToUpdate.get();
-        if (property instanceof String && !oldRoom.getRoomNumber().equalsIgnoreCase(updateRoom.getRoomNumber())) {
-          updateRoom.setRoomNumber(oldRoom.getRoomNumber());
-        }
-        if (Objects.equals(oldRoom.getRoomNumber(), updateRoom.getRoomNumber())
-            && !updateRoom.getItemsList().isEmpty()) {
-          if (oldRoom.getItemsList().size() == updateRoom.getItemsList().size()) {
-            for (int i = 0; i < updateRoom.getItemsList().size(); i++) {
-              updateRoom.getItemsList().get(i).setId(oldRoom.getItemsList().get(i).getId());
-            }
-          } else {
-            updateRoom.getItemsList().forEach(item -> item.setId(itemIdProvider.getCurrentIdAndIncrement()));
+        updateRoom.setRoomNumber(oldRoom.getRoomNumber());
+
+        if (oldRoom.getItemsList().size() == updateRoom.getItemsList().size()) {
+          for (int i = 0; i < updateRoom.getItemsList().size(); i++) {
+            updateRoom.getItemsList().get(i).setId(oldRoom.getItemsList().get(i).getId());
           }
-          log.debug("Update of \"Room: {}\" successfully completed.", property);
-          return super.updateByProperty(property, updateRoom);
+        } else {
+          updateRoom.getItemsList().forEach(item -> item.setId(itemIdProvider.getCurrentIdAndIncrement()));
         }
-        log.warn("Update of \"Room: {}\" failed. Mismatch number ({}) or empty Items list of provided Room (size: {})",
-            property, updateRoom.getRoomNumber(), updateRoom.getItemsList().size());
+        log.debug("Update of \"Room: {}\" successfully completed.", property);
+        return super.updateByProperty(property, updateRoom);
       }
+      log.warn("Update of \"Room: {}\" failed. Mismatch number ({}) or empty Items list of provided Room (size: {})",
+          property, updateRoom.getRoomNumber(), updateRoom.getItemsList().size());
       return Optional.empty();
     } finally {
       LOCK.unlock();
@@ -98,10 +97,10 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
   public <P> Optional<Room> deleteByProperty(P prop) {
     if (prop != null) {
       log.debug("Deletion of Room with specified {} successfully completed", prop);
-      return super.deleteByProperty(prop);
+    } else {
+      log.warn("Deletion failed. Room not found");
     }
-    log.warn("Deletion failed. Room {} not found", prop);
-    return Optional.empty();
+    return super.deleteByProperty(prop);
   }
 
   @Override
@@ -120,11 +119,14 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
   public <P> Optional<Room> saveInObjectWithProperty(P objectProperty, Item item) {
     LOCK.lock();
     try {
-      if (objectProperty instanceof String property) {
-        return saveByNumber(property, item);
+      if (objectProperty instanceof String number) {
+        log.debug("Item number: {} has been successfully stored in Room number: {}", item.getInventoryNumber(), number);
+        return saveByNumber(number, item);
       } else if (objectProperty instanceof Long roomId) {
+        log.debug("Item number: {} has been successfully stored in Room id: {}", item.getInventoryNumber(), roomId);
         return saveById(roomId, item);
       }
+      log.warn("Storage of an Item number: {} in Room: {} failed", item.getInventoryNumber(), objectProperty);
       return Optional.empty();
     } finally {
       LOCK.unlock();
@@ -173,12 +175,18 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
   public <P> Optional<Item> deleteItemByProperty(P itemProperty) {
     LOCK.lock();
     try {
-      if (itemProperty instanceof String number) {
-        return deleteItemWithNumber(number);
-      } else if (itemProperty instanceof Long id) {
-        return deleteItemWithId(id);
+      final Optional<Item> optionalItem = getItemByProperty(itemProperty);
+      if (optionalItem.isPresent()) {
+        Item itemToRemove = optionalItem.get();
+        Room room = getRoomContaining(itemToRemove);
+        room.setItemsList(room.getItemsList().stream()
+            .filter(item -> !Objects.equals(item.getId(), itemToRemove.getId()))
+            .toList());
+        super.updateByProperty(room.getId(), room);
+        return optionalItem;
+      } else {
+        return Optional.empty();
       }
-      return Optional.empty();
     } finally {
       LOCK.unlock();
     }
@@ -188,10 +196,18 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
   public <P> Optional<Item> updateItemByProperty(P itemProperty, Item updateItem) {
     LOCK.lock();
     try {
-      if (itemProperty instanceof String number) {
-        return updateItemWithNumber(number, updateItem);
-      } else if (itemProperty instanceof Long id) {
-        return updateItemWithId(id, updateItem);
+      Optional<Item> optionalItem = getItemByProperty(itemProperty);
+      if (optionalItem.isPresent()) {
+        final Item oldItem = optionalItem.get();
+        updateItem.setId(oldItem.getId());
+        updateItem.setModificationDate(LocalDate.now());
+        Room room = getRoomContaining(oldItem);
+        List<Item> itemList = room.getItemsList();
+        int itemIndex = itemList.indexOf(oldItem);
+        itemList.set(itemIndex, updateItem);
+        room.setItemsList(itemList);
+        super.updateByProperty(room.getId(), room);
+        return Optional.of(updateItem);
       }
       return Optional.empty();
     } finally {
@@ -245,91 +261,12 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
     return Optional.empty();
   }
 
-  private Optional<Item> deleteItemWithId(Long id) {
-    Optional<Room> optionalRoom = getAll().stream()
-        .filter(room -> room.getItemsList().stream()
-            .anyMatch(item -> item.getId().equals(id)))
-        .findFirst();
-    if (optionalRoom.isPresent()) {
-      Room searchedRoom = optionalRoom.get();
-      Optional<Item> itemToRemove = getItemByProperty(id);
-      searchedRoom.setItemsList(
-          searchedRoom.getItemsList().stream()
-              .filter(item -> !Objects.equals(item.getId(), id))
-              .toList()
-      );
-      super.updateByProperty(searchedRoom.getId(), searchedRoom);
-      return itemToRemove;
-    }
-    return Optional.empty();
-  }
-
-  private Optional<Item> deleteItemWithNumber(String number) {
-    Optional<Room> optionalRoom = getAll().stream()
-        .filter(room -> room.getItemsList().stream()
-            .anyMatch(item -> item.getInventoryNumber().equalsIgnoreCase(number)))
-        .findFirst();
-    if (optionalRoom.isPresent()) {
-      Room searchedRoom = optionalRoom.get();
-      Optional<Item> itemToRemove = getItemByProperty(number);
-      searchedRoom.setItemsList(
-          searchedRoom.getItemsList().stream()
-              .filter(item -> !Objects.equals(item.getInventoryNumber(), number))
-              .toList()
-      );
-      super.updateByProperty(searchedRoom.getRoomNumber(), searchedRoom);
-      return itemToRemove;
-    }
-    return Optional.empty();
-  }
-
-  private Optional<Item> updateItemWithId(Long id, Item updateItem) {
-    Optional<Item> optionalItem = getItemByProperty(id);
-    if (optionalItem.isPresent()) {
-      final Item oldItem = optionalItem.get();
-      updateItem.setId(id);
-      updateItem.setModificationDate(LocalDate.now());
-      Long roomId = getRoomId(oldItem);
-      Optional<Room> optionalRoom = getByProperty(roomId);
-      if (optionalRoom.isPresent()) {
-        Room room = optionalRoom.get();
-        int itemIndex = room.getItemsList().indexOf(oldItem);
-        List<Item> itemList = room.getItemsList();
-        itemList.set(itemIndex, updateItem);
-        room.setItemsList(itemList);
-        super.updateByProperty(roomId, room);
-        return getItemByProperty(id);
-      }
-    }
-    return Optional.empty();
-  }
-
-  private Optional<Item> updateItemWithNumber(String number, Item updateItem) {
-    Optional<Item> optionalItem = getItemByProperty(number);
-    if (optionalItem.isPresent()) {
-      final Item oldItem = optionalItem.get();
-      updateItem.setId(oldItem.getId());
-      updateItem.setModificationDate(LocalDate.now());
-      Long roomId = getRoomId(oldItem);
-      Optional<Room> optionalRoom = getByProperty(roomId);
-      if (optionalRoom.isPresent()) {
-        Room room = optionalRoom.get();
-        int itemIndex = room.getItemsList().indexOf(oldItem);
-        List<Item> itemList = room.getItemsList();
-        itemList.set(itemIndex, updateItem);
-        room.setItemsList(itemList);
-        super.updateByProperty(roomId, room);
-        return getItemByProperty(number);
-      }
-    }
-    return Optional.empty();
-  }
-
-  private Long getRoomId(Item oldItem) {
-    Optional<Long> searchedRoomId = getAll().stream()
-        .filter(room -> (room.getItemsList()).contains(oldItem))
-        .map(Room::getId)
-        .findFirst();
-    return searchedRoomId.isPresent() ? searchedRoomId.get() : 0;
+  private Room getRoomContaining(Item oldItem) {
+    return getAll().stream().filter(room ->
+            room.getItemsList().stream().anyMatch(item ->
+                item.getInventoryNumber().equalsIgnoreCase(oldItem.getInventoryNumber())
+                && item.getId().equals(oldItem.getId())))
+        .findFirst()
+        .orElseThrow(() -> new NoSuchElementException("Room containing searched Item not found."));
   }
 }
