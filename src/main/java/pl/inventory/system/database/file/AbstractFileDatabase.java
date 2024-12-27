@@ -15,7 +15,7 @@ import pl.inventory.system.model.Storable;
 import pl.inventory.system.utils.FileManager;
 import pl.inventory.system.utils.FileService;
 import pl.inventory.system.utils.IdProvider;
-import pl.inventory.system.utils.JsonSerializer;
+import pl.inventory.system.utils.JsonService;
 
 @Slf4j
 public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends InternallyStorable> implements Database<T1, T2> {
@@ -24,13 +24,13 @@ public abstract class AbstractFileDatabase<T1 extends Storable, T2 extends Inter
   private final Path filePath;
   private final IdProvider idProvider;
   private final FileService fileService;
-  private final JsonSerializer serializer;
+  private final JsonService serializer;
   private final Class<T1> cls;
 
   protected AbstractFileDatabase(Path roomFilePath,
                                  IdProvider idProvider,
                                  FileService fileService,
-                                 JsonSerializer serializer,
+                                 JsonService serializer,
                                  Class<T1> cls) {
     log.info("File database initialised for type {}", cls.getSimpleName());
     this.filePath = roomFilePath;

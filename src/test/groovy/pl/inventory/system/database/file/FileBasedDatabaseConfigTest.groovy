@@ -1,7 +1,7 @@
 package pl.inventory.system.database.file
 
 import pl.inventory.system.utils.FileService
-import pl.inventory.system.utils.JsonSerializer
+import pl.inventory.system.utils.JsonService
 import spock.lang.Specification
 
 import java.nio.file.Files
@@ -60,7 +60,7 @@ class FileBasedDatabaseConfigTest extends Specification {
     def "should create an instance of Database for Room objects"() {
         given:
         def fileService = new FileService()
-        def serializer = new JsonSerializer()
+        def serializer = new JsonService()
 
         when:
         def dbInstance = databaseConfig.roomDatabase(fileService, serializer)

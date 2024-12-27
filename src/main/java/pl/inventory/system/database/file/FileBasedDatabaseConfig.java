@@ -12,7 +12,7 @@ import pl.inventory.system.model.Room;
 import pl.inventory.system.utils.FileManager;
 import pl.inventory.system.utils.FileService;
 import pl.inventory.system.utils.IdProvider;
-import pl.inventory.system.utils.JsonSerializer;
+import pl.inventory.system.utils.JsonService;
 
 @Slf4j
 @Configuration
@@ -56,7 +56,7 @@ public class FileBasedDatabaseConfig {
   @Bean
   public Database<Room, Item> roomDatabase(
       FileService fileService,
-      JsonSerializer serializer) {
+      JsonService serializer) {
     log.debug("File database has been initialised for objects of type Room");
     return new FileBasedDatabase(
         roomFilePath(),

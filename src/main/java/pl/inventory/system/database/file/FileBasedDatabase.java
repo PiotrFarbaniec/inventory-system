@@ -11,7 +11,7 @@ import pl.inventory.system.model.Item;
 import pl.inventory.system.model.Room;
 import pl.inventory.system.utils.FileService;
 import pl.inventory.system.utils.IdProvider;
-import pl.inventory.system.utils.JsonSerializer;
+import pl.inventory.system.utils.JsonService;
 
 @Slf4j
 public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
@@ -22,7 +22,7 @@ public class FileBasedDatabase extends AbstractFileDatabase<Room, Item> {
                            IdProvider itemIdProvider,
                            IdProvider roomIdProvider,
                            FileService fileService,
-                           JsonSerializer serializer,
+                           JsonService serializer,
                            Class<Room> cls) {
     super(roomFilePath, roomIdProvider, fileService, serializer, cls);
     this.itemIdProvider = itemIdProvider;

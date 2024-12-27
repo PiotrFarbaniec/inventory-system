@@ -13,7 +13,7 @@ import pl.inventory.system.service.RoomService
 import pl.inventory.system.utils.FileManager
 import pl.inventory.system.utils.FileService
 import pl.inventory.system.utils.IdProvider
-import pl.inventory.system.utils.JsonSerializer
+import pl.inventory.system.utils.JsonService
 import spock.lang.Specification
 
 import java.nio.file.Files
@@ -25,7 +25,7 @@ abstract class AbstractDatabaseTest extends Specification {
     Path idItemPath
 
     FileService fileService
-    JsonSerializer serializer
+    JsonService serializer
     IdProvider itemIdProvider
     IdProvider roomIdProvider
     Database<Room, Item> fileDatabase
@@ -48,7 +48,7 @@ abstract class AbstractDatabaseTest extends Specification {
         idItemPath = FileManager.createFile(idItemFile, directory)
 
         fileService = new FileService()
-        serializer = new JsonSerializer()
+        serializer = new JsonService()
         itemIdProvider = new IdProvider(idItemPath, fileService)
         roomIdProvider = new IdProvider(idRoomPath, fileService)
 
