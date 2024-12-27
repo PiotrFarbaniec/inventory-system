@@ -8,7 +8,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.stereotype.Service;
 
 @Service
-public class JsonSerializer {
+public class JsonService {
 
   private final JsonMapper mapper;
 

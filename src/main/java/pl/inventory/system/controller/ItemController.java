@@ -1,5 +1,7 @@
 package pl.inventory.system.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +20,8 @@ import pl.inventory.system.service.ItemService;
 
 @SuppressWarnings(value = {"unused"})
 @Slf4j
-@RestController()
+@RestController
+@Tag(name = "Item Controller")
 @RequestMapping(value = {"v1/item"}, produces = {"application/json;charset=UTF-8"})
 public class ItemController {
 
@@ -29,6 +32,7 @@ public class ItemController {
     this.service = service;
   }
 
+  @Operation(method = "GET", summary = "Retrieving of all Item entities from the database")
   @RequestMapping(method = RequestMethod.GET, value = {"/get-all"})
   ResponseEntity<List<Item>> getAllItems() {
     try {
@@ -42,6 +46,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "GET", summary = "Retrieving an Item entity from the database by specified ID")
   @RequestMapping(method = RequestMethod.GET, value = {"/get-by/id/{id}"})
   ResponseEntity<Item> getItemById(@PathVariable(value = "id") Long id) {
     try {
@@ -54,6 +59,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "GET", summary = "Retrieving an Item entity from the database by specified number")
   @RequestMapping(method = RequestMethod.GET, value = {"/get-by/number/"})
   ResponseEntity<Item> getItemByNumber(@RequestParam (value = "n") String number) {
     try {
@@ -66,6 +72,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "PUT", summary = "Creating an Item entity in the database by specified Room ID")
   @RequestMapping(method = RequestMethod.PUT, value = {"/save-by/id/{id}"})
   ResponseEntity<Long> saveInRoomId(@PathVariable(name = "id") Long id, @RequestBody Item item) {
     try {
@@ -79,6 +86,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "PUT", summary = "Creating an Item entity in the database by specified Room number")
   @RequestMapping(method = RequestMethod.PUT, value = {"/save-by/number/"})
   ResponseEntity<String> saveInRoomNumber(@RequestParam(value = "n") String number, @RequestBody Item item) {
     try {
@@ -92,6 +100,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "GET", summary = "Retrieving of all Item entities from database by specified Room number")
   @RequestMapping(method = RequestMethod.GET, value = {"/get-all-by/number/"})
   ResponseEntity<List<Item>> getAllByRoomNumber(@RequestParam(value = "n") String number) {
     try {
@@ -105,6 +114,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "GET", summary = "Retrieving of all Item entities from database by specified Room ID")
   @RequestMapping(method = RequestMethod.GET, value = {"/get-all-by/id/{id}"})
   ResponseEntity<List<Item>> getAllByRoomId(@PathVariable(name = "id") Long id) {
     try {
@@ -118,6 +128,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "DELETE", summary = "Deleting an Item entity from the database by specified id")
   @RequestMapping(method = RequestMethod.DELETE, value = {"/delete-by/id/{id}"})
   ResponseEntity<String> deleteByRoomId(@PathVariable(name = "id") Long id) {
     try {
@@ -131,6 +142,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "DELETE", summary = "Deleting an Item entity from the database by specified number")
   @RequestMapping(method = RequestMethod.DELETE, value = {"/delete-by/number/"})
   ResponseEntity<String> deleteByRoomNumber(@RequestParam(value = "n") String number) {
     try {
@@ -144,6 +156,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "PUT", summary = "Updating an Item entity in the database by specified id")
   @RequestMapping(method = RequestMethod.PUT, value = {"/update-by/id/{id}"})
   ResponseEntity<Item> updateByRoomId(@PathVariable(name = "id") Long id, @RequestBody Item updateItem) {
     try {
@@ -157,6 +170,7 @@ public class ItemController {
     }
   }
 
+  @Operation(method = "PUT", summary = "Updating an Item entity in the database by specified number")
   @RequestMapping(method = RequestMethod.PUT, value = {"/update-by/number/"})
   ResponseEntity<Item> updateByRoomNumber(@RequestParam(name = "n") String number, @RequestBody Item updateItem) {
     try {

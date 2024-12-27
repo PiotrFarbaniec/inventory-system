@@ -1,6 +1,7 @@
 package pl.inventory.system.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
@@ -14,10 +15,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Room implements Storable {
 
+  @Schema(title = "An ID of the room, generated automatically", example = "1")
   private Long id;
 
+  @Schema(title = "A specific number of the room", example = "112")
   private String roomNumber;
 
+  @Schema(title = "List of items included in the room", nullable = true)
   private List<Item> itemsList;
 
   @JsonIgnore

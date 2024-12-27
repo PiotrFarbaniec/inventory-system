@@ -3,8 +3,8 @@ package pl.inventory.system.utils
 import com.fasterxml.jackson.core.JsonProcessingException
 import spock.lang.Specification
 
-class JsonSerializerTest extends Specification {
-    def serializer = new JsonSerializer()
+class JsonServiceTest extends Specification {
+    def serializer = new JsonService()
 
     def "should throw an exception when converting an invalid object to json"() {
         given:

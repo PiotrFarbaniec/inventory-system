@@ -1,5 +1,7 @@
 package pl.inventory.system.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -15,9 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 import pl.inventory.system.model.Room;
 import pl.inventory.system.service.RoomService;
 
-@Slf4j
 @SuppressWarnings(value = {"unused"})
+@Slf4j
 @RestController
+@Tag(name = "Room Controller")
 @RequestMapping(value = {"v1/room"}, produces = {"application/json;charset=UTF-8"})
 public class RoomController {
 
@@ -28,6 +31,7 @@ public class RoomController {
     this.service = service;
   }
 
+  @Operation(method = "POST", summary = "Creation of Room entities in the database")
   @RequestMapping(method = RequestMethod.POST, value = {"/save"})
   ResponseEntity<Long> save(@RequestBody Room room) {
     try {
@@ -41,6 +45,7 @@ public class RoomController {
     }
   }
 
+  @Operation(method = "GET", summary = "Retrieving all Room entities from the database")
   @RequestMapping(method = RequestMethod.GET, value = {"/get/all"})
   ResponseEntity<List<Room>> getAll() {
     try {
@@ -54,6 +59,7 @@ public class RoomController {
     }
   }
 
+  @Operation(method = "GET", summary = "Retrieving Room entity by specified ID from the database")
   @RequestMapping(method = RequestMethod.GET, value = {"/get-by/id/{id}"})
   ResponseEntity<Room> getById(@PathVariable(name = "id") Long id) {
     try {
@@ -67,6 +73,7 @@ public class RoomController {
     }
   }
 
+  @Operation(method = "GET", summary = "Retrieving Room entity by specified number from the database")
   @RequestMapping(method = RequestMethod.GET, value = {"/get-by/number/"})
   ResponseEntity<Room> getByNumber(@RequestParam(value = "n") String number) {
     try {
@@ -80,6 +87,7 @@ public class RoomController {
     }
   }
 
+  @Operation(method = "DELETE", summary = "Deletion of Room entity by specified ID from the database")
   @RequestMapping(method = RequestMethod.DELETE, value = {"/delete-by/id/{id}"})
   ResponseEntity<String> deleteById(@PathVariable(name = "id") Long id) {
     try {
@@ -93,6 +101,7 @@ public class RoomController {
     }
   }
 
+  @Operation(method = "DELETE", summary = "Deletion of Room entity by specified number from the database")
   @RequestMapping(method = RequestMethod.DELETE, value = {"/delete-by/number/"})
   ResponseEntity<String> deleteByNumber(@RequestParam(name = "n") String number) {
     try {
@@ -106,6 +115,7 @@ public class RoomController {
     }
   }
 
+  @Operation(method = "PUT", summary = "Updating of Room entity by specified ID")
   @RequestMapping(method = RequestMethod.PUT, value = {"/update-by/id/{id}"})
   ResponseEntity<Room> updateById(@PathVariable(name = "id") Long id, @RequestBody Room updateRoom) {
     try {
@@ -119,6 +129,7 @@ public class RoomController {
     }
   }
 
+  @Operation(method = "PUT", summary = "Updating of Room entity by specified number")
   @RequestMapping(method = RequestMethod.PUT, value = {"/update-by/number/"})
   ResponseEntity<Room> updateByNumber(@RequestParam(value = "n") String number, @RequestBody Room updateRoom) {
     try {
